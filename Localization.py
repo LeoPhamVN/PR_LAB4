@@ -6,7 +6,7 @@ class Localization:
     Localization base class. Implements the localization algorithm.
     """
 
-    def __init__(self, index, kSteps, robot, x0, *args):
+    def __init__(self, index, kSteps, robot, x0, P0, *args):
         """
         Constructor of the DRLocalization class.
 
@@ -21,6 +21,7 @@ class Localization:
         self.kSteps = kSteps
         self.k = 0  # initialize log time step
         self.xk_1 = x0  # initialize state
+        self.Pk_1 = P0  # initialize covariance P
 
         x_state_exists = False
         y_state_exists = False

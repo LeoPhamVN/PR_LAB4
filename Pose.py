@@ -191,7 +191,9 @@ class Pose3D(Pose):
         :returns: C-Frame pose expressed in A-Frame coordinates
         """
         # TODO: To be completed by the student
-
+        AxC = np.array([[AxB[0,0] + BxC[0,0]*cos(AxB[2,0]) - BxC[1,0]*sin(AxB[2,0])],
+                        [AxB[1,0] + BxC[0,0]*sin(AxB[2,0]) + BxC[1,0]*sin(AxB[2,0])],
+                        [AxB[2,0] + BxC[2,0]]])
         return AxC
 
     def J_1oplus(AxB, BxC):
@@ -213,10 +215,12 @@ class Pose3D(Pose):
         :returns: Evaluation of the :math:`J_{1\\oplus}` Jacobian of the pose compounding operation with respect to the first pose (eq. :eq:`eq-J1oplus3dof`)
         """
         # TODO: To be completed by the student
-
+        J1 = np.array([[1.0,    0.0,    -BxC[0,0]*sin(AxB[2,0])-BxC[1,0]*cos(AxB[2,0])],
+                       [0.0,    1.0,     BxC[0,0]*cos(AxB[2,0])-BxC[1,0]*sin(AxB[2,0])],
+                       [0.0,    0.0,     1.0]])
         return J1
 
-    def J_2oplus(AxB):
+    def J_2oplus(AxB, BxC):
         """
         Jacobian of the pose compounding operation (:eq:`eq-oplus3dof`) with respect to the second pose:
 
@@ -234,7 +238,9 @@ class Pose3D(Pose):
         :returns: Evaluation of the :math:`J_{2\\oplus}` Jacobian of the pose compounding operation with respect to the second pose (eq. :eq:`eq-J2oplus3dof`)
         """
         # TODO: To be completed by the student
-
+        J2 = np.array([[cos(AxB[2,0]),    -sin(AxB[2,0]),   0.0],
+                       [sin(AxB[2,0]),     cos(AxB[2,0]),   0.0],
+                       [0.0,               0.0,             1.0]])
         return J2
 
     def ominus(AxB):
@@ -253,8 +259,10 @@ class Pose3D(Pose):
         :returns: A-Frame pose expressed in B-Frame coordinates (eq. :eq:`eq-ominus3dof`)
         """
         # TODO: To be completed by the student
-
-        return BxA
+        AxB = np.array([[-AxB[0,0]*cos(AxB[2,0]) - AxB[1,0]*sin(AxB[2,0])],
+                        [ AxB[0,0]*sin(AxB[2,0]) - AxB[1,0]*cos(AxB[2,0])],
+                        [-AxB[2,0]]])
+        return AxB
 
     def J_ominus(AxB):
         """
@@ -274,5 +282,7 @@ class Pose3D(Pose):
         :returns: Evaluation of the :math:`J_{\\ominus}` Jacobian of the inverse pose compounding operation with respect to the pose (eq. :eq:`eq-Jominus3dof`)
         """
         # TODO: To be completed by the student
-
+        J = np.array([[-cos(AxB[2,0]),    -sin(AxB[2,0]),   AxB[0,0]*sin(AxB[2,0])-AxB[1,0]*cos(AxB[2,0])],
+                      [ sin(AxB[2,0]),    -cos(AxB[2,0]),   AxB[0,0]*cos(AxB[2,0])+AxB[1,0]*sin(AxB[2,0])],
+                      [ 0.0,               0.0,            -1.0]])
         return J

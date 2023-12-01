@@ -2,6 +2,7 @@ from GFLocalization import *
 from EKF import *
 from DR_3DOFDifferentialDrive import *
 from DifferentialDriveSimulatedRobot import *
+from MapFeature import *
 
 class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferentialDrive, EKF):
     """
@@ -34,22 +35,23 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
 
     def f(self, xk_1, uk):
         # TODO: To be completed by the student
-
+        xk_bar  = Pose3D.oplus(xk_1.reshape((3,1)), uk.reshape((3,1)))
         return xk_bar
 
-    def Jfx(self, xk_1):
+    def Jfx(self, xk_1, uk):
         # TODO: To be completed by the student
-
+        J = Pose3D.J_1oplus(xk_1.reshape((3,1)), uk.reshape((3,1)))
         return J
 
-    def Jfw(self, xk_1):
+    def Jfw(self, xk_1, uk):
         # TODO: To be completed by the student
-
+        J = Pose3D.J_2oplus(xk_1.reshape((3,1)), uk.reshape((3,1)))
         return J
 
     def h(self, xk):  #:hm(self, xk):
         # TODO: To be completed by the student
-
+        # Obserse the heading of the robot
+        h   = xk[2,0]
         return h  # return the expected observations
 
     def GetInput(self):
@@ -58,6 +60,24 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
         :return: uk,Qk
         """
         # TODO: To be completed by the student
+        # Get output of encoder via ReadEncoder() function
+        uk_pulse, _     = self.robot.ReadEncoders()
+        
+        # Compute travel distance of 2 wheels [meter] from output of the encoder
+        d_L     = uk_pulse[0, 0] * (2*np.pi*self.wheelRadius/self.robot.pulse_x_wheelTurns)
+        d_R     = uk_pulse[1, 0] * (2*np.pi*self.wheelRadius/self.robot.pulse_x_wheelTurns)
+
+        # Compute travel distance of the center point of robot between k-1 and k
+        d       = (d_L + d_R) / 2.
+        # Compute rotated angle of robot around the center point between k-1 and k
+        delta_theta_k   = np.arctan2(d_R - d_L, self.wheelBase)
+
+        # Compute xk from xk_1 and the travel distance and rotated angle. Got the equations from chapter 1.4.1: Odometry 
+        uk              = np.array([[d],
+                                    [0],
+                                    [delta_theta_k]])
+        
+        Qk = np.diag(np.array([0.1 ** 2, 0.1 ** 2, np.deg2rad(5) ** 2]))  # covariance of simulated displacement noise
 
         return uk, Qk
 
@@ -67,7 +87,12 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
         :return: zk, Rk, Hk, Vk
         """
         # TODO: To be completed by the student
-
+        # Read compass sensor
+        zk, Rk  = self.robot.ReadCompass()
+        # Compute H matrix
+        Hk      = np.array([0., 0., 1.]).reshape((1,3))
+        # Compute V matrix
+        Vk      = np.diag([1.])
         return zk, Rk, Hk, Vk
 
 

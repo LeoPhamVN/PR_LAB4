@@ -24,7 +24,7 @@ class EKF(GaussianFilter):
         """
         pass
 
-    def Jfx(self, xk_1):
+    def Jfx(self, xk_1, uk):
         """
         Jacobian of the motion model with respect to the state vector. **Method to be overwritten by the child class**.
 
@@ -33,7 +33,7 @@ class EKF(GaussianFilter):
         """
         pass
 
-    def Jfw(self, xk_1):
+    def Jfw(self, xk_1, uk):
         """
         Jacobian of the motion model with respect to the noise vector. **Method to be overwritten by the child class**.
 
@@ -72,11 +72,18 @@ class EKF(GaussianFilter):
         self.xk_1 = xk_1 if xk_1 is not None else self.xk_1
         self.Pk_1 = Pk_1 if Pk_1 is not None else self.Pk_1
 
-        self.uk = uk;
+        self.uk = uk
         self.Qk = Qk  # store the input and noise covariance for logging
 
         # KF equations begin here
         # TODO: To be implemented by the student
+        # Predict states
+        self.xk_bar = self.f(xk_1, uk)
+        # Predict covariance
+        Ak          = self.Jfx(xk_1, uk)
+        Wk          = self.Jfw(xk_1, uk)
+    
+        self.Pk_bar = Ak @ self.Pk_1 @ Ak.T + Wk @ Qk @ Wk.T
 
         return self.xk_bar, self.Pk_bar
 
@@ -95,12 +102,19 @@ class EKF(GaussianFilter):
         # logging for plotting
         self.xk_bar = xk_bar
         self.Pk_bar = Pk_bar
-        self.zk = zk;
+        self.zk = zk
         self.nz = zk.shape[0];  # store dimensionality of the observation
         self.Rk = Rk  # store the observation and noise covariance for logging
 
         # KF equations begin here
 
         # TODO: To be implemented by the student
+        # Compute Kalman gain
+        Kk          = self.Pk_bar @ Hk.T @ np.linalg.inv(Hk @ self.Pk_bar @ Hk.T + Vk @ Rk @ Vk.reshape((1,1)))
 
+        # Compute updated state and covariance
+        self.xk     = self.xk_bar + Kk @ (zk - self.h(self.xk_bar))
+        I           = np.diag(np.ones(len(xk_bar)))
+        self.Pk     = (I - Kk @ Hk) @ self.Pk_bar @ (I - Kk @ Hk).T
+        
         return self.xk, self.Pk

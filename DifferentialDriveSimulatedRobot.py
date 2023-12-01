@@ -61,7 +61,7 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         # Inititalize the robot parameters
         self.wheelBase = 0.5  # distance between the wheels
         self.wheelRadius = 0.1  # radius of the wheels
-        self.pulse_x_wheelTurns = 1024  # number of pulses per wheel turn
+        self.pulse_x_wheelTurns = 10000  # number of pulses per wheel turn
 
         # Initialize the sensor simulation
         self.encoder_reading_frequency = 1  # frequency of encoder readings
@@ -70,11 +70,11 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         self.Polar2D_feature_reading_frequency = 50  # frequency of Polar2D feature readings
         self.Polar2D_max_range = 50  # maximum Polar2D range, used to simulate the field of view
         self.Rfp = np.diag(np.array([1 ** 2, np.deg2rad(5) ** 2]))  # covariance of simulated Polar2D feature noise
-
+        
         self.xy_feature_reading_frequency = 50  # frequency of XY feature readings
         self.xy_max_range = 50  # maximum XY range, used to simulate the field of view
 
-        self.yaw_reading_frequency = 10  # frequency of Yasw readings
+        self.yaw_reading_frequency = 1  # frequency of Yasw readings
         self.v_yaw_std = np.deg2rad(5)  # std deviation of simulated heading noise
 
     def fs(self, xsk_1, usk):  # input velocity motion model with velocity noise
@@ -108,8 +108,38 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         """
 
         # TODO: to be completed by the student
+        # Position of robot at k-1 in N-Frame
+        eta_sk_1    = Pose3D(xsk_1[0:3])
+        # Velocity of robot at k-1 in B-Frame
+        nuy_sk_1    = Pose3D(xsk_1[3:6])
+        # Accerleraion noise (Zero Mean Gaussian Noise)
+        wsk         = np.array([[np.random.normal(0., 0.1)], 
+                                [0],
+                                [np.random.normal(0., 0.005)]])
+        # Vector distance from k-1 to k
+        distance    = nuy_sk_1 * self.dt + 1./2. * wsk * self.dt**2
+        # Position of robot at k
+        eta_sk      = Pose3D.oplus(eta_sk_1, distance)
+        # P controller gain: K (positicve 3 by 1 vector) 
+        K           = np.diag(np.array([1., 1., 1.]))
+        # Compute desired nuy
+        nuy_d       = np.array([usk[0],
+                                [0.],
+                                usk[1]])
+        # Velocity of robot at k
+        nuy_sk      = nuy_sk_1 + np.dot(K, (nuy_d - nuy_sk_1)) + wsk * self.dt
+        # Combine
+        self.xsk    = np.concatenate((eta_sk, nuy_sk))
 
-        pass
+        if self.k % self.visualizationInterval == 0:
+                self.PlotRobot()
+                self.xTraj.append(self.xsk[0, 0])
+                self.yTraj.append(self.xsk[1, 0])
+                self.trajectory.pop(0).remove()
+                self.trajectory = plt.plot(self.xTraj, self.yTraj, marker='.', color='orange', markersize=1)
+
+        self.k += 1
+        return self.xsk
 
     def ReadEncoders(self):
         """ Simulates the robot measurements of the left and right wheel encoders.
@@ -118,20 +148,40 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
 
         :return zsk,Rsk: :math:`zk=[n_L~n_R]^T` observation vector containing number of pulses read from the left and right wheel encoders. :math:`R_{s_k}=diag(\\sigma_L^2,\\sigma_R^2)` covariance matrix of the read pulses.
         """
-
+        
         # TODO: to be completed by the student
+        # Get the linear and angular velocities in the robot B-Frame
+        uB_k    = self.xsk[3,0]
+        rB_k    = self.xsk[5,0]
+        # Compute spin velocity of 2 wheels
+        w_L     = uB_k - (rB_k * (self.wheelBase/2))
+        w_R     = uB_k + (rB_k * (self.wheelBase/2))
 
-        pass
+        # Compute encoder output on 2 wheel (Chapter 1.4.1: Odometry in the book)
+        n_L     = int((w_L * self.dt) / (2*np.pi*self.wheelRadius/self.pulse_x_wheelTurns))
+        n_R     = int((w_R * self.dt) / (2*np.pi*self.wheelRadius/self.pulse_x_wheelTurns))
+
+        # Combine cumber od pulses read from the left and right wheel encoders
+        zsk     = np.array([[n_L],
+                            [n_R]])
+        # Compute convariance matrix of the read pulses
+        Rsk     = self.Re
+
+        return zsk, Rsk
 
     def ReadCompass(self):
         """ Simulates the compass reading of the robot.
 
         :return: yaw and the covariance of its noise *R_yaw*
         """
-
+       
         # TODO: to be completed by the student
+        # Get the robot orientation in the world N-Frame
+        theta_k     = np.array([self.xsk[2,0]]).reshape(1,1)
+        # Compute convariance matrix of Yaw
+        R_yaw       = np.diag([self.v_yaw_std**2])
 
-        pass
+        return theta_k, R_yaw
 
     def PlotRobot(self):
         """ Updates the plot of the robot at the current pose """
