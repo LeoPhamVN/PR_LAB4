@@ -89,6 +89,7 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
         # TODO: To be completed by the student
         # Read compass sensor
         zk, Rk  = self.robot.ReadCompass()
+
         # Compute H matrix
         Hk      = np.array([0., 0., 1.]).reshape((1,3))
         # Compute V matrix
@@ -108,7 +109,7 @@ if __name__ == '__main__':
     xs0 = np.zeros((6,1))  # initial simulated robot pose
 
     robot = DifferentialDriveSimulatedRobot(xs0, M)  # instantiate the simulated robot object
-    kSteps = 5000
+    kSteps = 1000
 
     xs0 = np.zeros((6, 1))  # initial simulated robot pose
     index = [IndexStruct("x", 0, None), IndexStruct("y", 1, None), IndexStruct("yaw", 2, 1)]

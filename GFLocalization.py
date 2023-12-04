@@ -3,6 +3,7 @@ from GaussianFilter import GaussianFilter
 import matplotlib.pyplot as plt
 from GetEllipse import GetEllipse
 import numpy as np
+import time 
 
 class GFLocalization(Localization,GaussianFilter):
     """
@@ -92,7 +93,7 @@ class GFLocalization(Localization,GaussianFilter):
         zk, Rk, Hk, Vk  = self.GetMeasurements()
         # Update step
         xk, Pk          = self.Update(zk, Rk, xk_bar, Pk_bar, Hk, Vk)
-
+        
         return xk, Pk, xk_bar, zk
 
     def LocalizationLoop(self, x0, P0, usk):
@@ -121,6 +122,12 @@ class GFLocalization(Localization,GaussianFilter):
             
             # plot the estimated trajectory
             self.PlotUncertainty(xk, Pk)
+
+            # Add to save figure to write the report
+            # if self.k % 400 == 10:
+            #     name_fig = './Figures/Figure_' + str(self.k//400)
+            #     plt.savefig(name_fig)
+            #     time.sleep(0.2)
             
         self.PlotState()  # plot the state estimation results
         plt.show()

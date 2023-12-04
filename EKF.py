@@ -109,13 +109,16 @@ class EKF(GaussianFilter):
         # KF equations begin here
 
         # TODO: To be implemented by the student
-        # Compute Kalman gain
-        Kk          = self.Pk_bar @ Hk.T @ np.linalg.inv(Hk @ self.Pk_bar @ Hk.T + Vk @ Rk @ Vk.T)
+        if zk.size != 0:
+            # Compute Kalman gain
+            Kk          = self.Pk_bar @ Hk.T @ np.linalg.inv(Hk @ self.Pk_bar @ Hk.T + Vk @ Rk @ Vk.T)
 
-        # Compute updated state and covariance
-        a           = zk - self.h(self.xk_bar)
-        self.xk     = self.xk_bar + Kk @ (zk - self.h(self.xk_bar))
-        I           = np.diag(np.ones(len(xk_bar)))
-        self.Pk     = (I - Kk @ Hk) @ self.Pk_bar @ (I - Kk @ Hk).T
-        
+            # Compute updated state and covariance
+            self.xk     = self.xk_bar + Kk @ (zk - self.h(self.xk_bar))
+            I           = np.diag(np.ones(len(xk_bar)))
+            self.Pk     = (I - Kk @ Hk) @ self.Pk_bar @ (I - Kk @ Hk).T
+        else:
+            self.xk = xk_bar
+            self.Pk = Pk_bar
+
         return self.xk, self.Pk

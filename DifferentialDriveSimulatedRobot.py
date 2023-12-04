@@ -74,7 +74,7 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         self.xy_feature_reading_frequency = 50  # frequency of XY feature readings
         self.xy_max_range = 50  # maximum XY range, used to simulate the field of view
 
-        self.yaw_reading_frequency = 1  # frequency of Yasw readings
+        self.yaw_reading_frequency = 20  # frequency of Yasw readings
         self.v_yaw_std = np.deg2rad(5)  # std deviation of simulated heading noise
 
     def fs(self, xsk_1, usk):  # input velocity motion model with velocity noise
@@ -167,7 +167,14 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         # Compute convariance matrix of the read pulses
         Rsk     = self.Re
 
-        return zsk, Rsk
+        noise = np.random.normal(0, np.sqrt(Rsk.diagonal())).reshape((len(Rsk),1)).astype(int)
+
+        zsk += noise  
+
+        if self.k % self.encoder_reading_frequency == 0:
+            return zsk, Rsk
+        else:
+            return np.zeros((0,0)), np.zeros((0,0))
 
     def ReadCompass(self):
         """ Simulates the compass reading of the robot.
@@ -181,7 +188,14 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         # Compute convariance matrix of Yaw
         R_yaw       = np.diag([self.v_yaw_std**2])
 
-        return theta_k, R_yaw
+        noise = np.random.normal(0, np.sqrt(R_yaw.diagonal())).reshape((len(R_yaw),1))
+
+        theta_k += noise
+
+        if self.k % self.yaw_reading_frequency == 0:
+            return theta_k, R_yaw
+        else:
+            return np.zeros((0,0)), np.zeros((0,0))
 
     def PlotRobot(self):
         """ Updates the plot of the robot at the current pose """
