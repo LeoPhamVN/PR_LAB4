@@ -43,9 +43,9 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
         J = Pose3D.J_1oplus(xk_1.reshape((3,1)), uk.reshape((3,1)))
         return J
 
-    def Jfw(self, xk_1, uk):
+    def Jfw(self, xk_1):
         # TODO: To be completed by the student
-        J = Pose3D.J_2oplus(xk_1.reshape((3,1)), uk.reshape((3,1)))
+        J = Pose3D.J_2oplus(xk_1.reshape((3,1)))
         return J
 
     def h(self, xk):  #:hm(self, xk):

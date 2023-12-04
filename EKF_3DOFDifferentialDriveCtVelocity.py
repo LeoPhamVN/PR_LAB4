@@ -16,25 +16,49 @@ class EKF_3DOFDifferentialDriveCtVelocity(GFLocalization, DR_3DOFDifferentialDri
                  IndexStruct("u", 3, 2), IndexStruct("v", 4, 3), IndexStruct("yaw_dot", 5, None)]
 
         # TODO: To be completed by the student
+        self.t_1 = 0
+        self.t = 0
+        self.Dt = self.t - self.t_1
+        super().__init__(index, kSteps, robot, x0, P0, *args)
 
     def f(self, xk_1, uk):
         # TODO: To be completed by the student
-
+        vk_bar      = xk_1[3:6].reshape((3,1))
+        uk          = vk_bar * self.dt
+        etak_bar    = Pose3D.oplus(xk_1[0:3].reshape((3,1)), uk.reshape((3,1)))
+        
+        xk_bar = np.block([[etak_bar], [vk_bar]])
         return xk_bar
 
-    def Jfx(self, xk_1):
+    def Jfx(self, xk_1, uk):
         # TODO: To be completed by the student
+        uk          = xk_1[3:6].reshape((3,1)) * self.dt
 
+        J_eta_x     = np.block([Pose3D.J_1oplus(xk_1[0:3].reshape((3,1)), uk.reshape((3,1))), Pose3D.J_2oplus(xk_1[0:3].reshape((3,1)))*self.dt])
+        J_v_x       = np.block([np.zeros((3,3)), np.diag(np.ones(3))])
+
+        J           = np.block([[J_eta_x], [J_v_x]])
         return J
 
     def Jfw(self, xk_1):
         # TODO: To be completed by the student
-
+        J           = np.block([[Pose3D.J_2oplus(xk_1[0:3].reshape((3,1)))*self.dt*self.dt], [np.diag(np.ones(3))*self.dt]])
         return J
 
     def h(self, xk):  #:hm(self, xk):
         # TODO: To be completed by the student
-
+        H       = np.zeros((0,6))
+        
+        if self.yaw == True:
+            H_yaw   = np.array([[0,0,1,0,0,0]])
+            H = np.block([[H], [H_yaw]])
+        if self.vel == True:
+            H_n= np.array([[ 0,0,0,self.Kn_inv[0,0],0,self.Kn_inv[0,1]],
+                            [ 0,0,0,self.Kn_inv[1,0],0,self.Kn_inv[1,1]]])
+            H = np.block([[H], [H_n]])
+        # Combine number of pulses read from the left and right wheel encoders
+        h       = H @ xk.reshape((6,1))
+        
         return h  # return the expected observations
 
     def GetInput(self):
@@ -43,7 +67,11 @@ class EKF_3DOFDifferentialDriveCtVelocity(GFLocalization, DR_3DOFDifferentialDri
         :return: uk,Qk:
         """
         # TODO: To be completed by the student
+        uk = None
 
+        Qw = np.array([0.5 ** 2, 0.01 ** 2, np.deg2rad(1) ** 2])             # covariance of the acceleration according to 3 axises (x, y, heading)
+
+        Qk = np.diag(Qw)                                                    
         return uk, Qk
 
     def GetMeasurements(self):  # override the observation model
@@ -106,7 +134,8 @@ if __name__ == '__main__':
     kSteps = 5000
 
     xs0 = np.zeros((6, 1))  # initial simulated robot pose
-    index = [IndexStruct("x", 0, None), IndexStruct("y", 1, None), IndexStruct("yaw", 2, 1)]
+    index = [IndexStruct("x", 0, None), IndexStruct("y", 1, None), IndexStruct("yaw", 2, 1),
+                 IndexStruct("u", 3, 2), IndexStruct("v", 4, 3), IndexStruct("yaw_dot", 5, None)]
 
     x0 = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]).T
     P0 = np.diag(np.array([0.0, 0.0, 0.0, 0.5 ** 2, 0 ** 2, 0.05 ** 2]))

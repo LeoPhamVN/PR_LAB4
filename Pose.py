@@ -220,7 +220,7 @@ class Pose3D(Pose):
                        [0.0,    0.0,     1.0]])
         return J1
 
-    def J_2oplus(AxB, BxC):
+    def J_2oplus(AxB):
         """
         Jacobian of the pose compounding operation (:eq:`eq-oplus3dof`) with respect to the second pose:
 

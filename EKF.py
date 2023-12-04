@@ -81,7 +81,7 @@ class EKF(GaussianFilter):
         self.xk_bar = self.f(xk_1, uk)
         # Predict covariance
         Ak          = self.Jfx(xk_1, uk)
-        Wk          = self.Jfw(xk_1, uk)
+        Wk          = self.Jfw(xk_1)
     
         self.Pk_bar = Ak @ self.Pk_1 @ Ak.T + Wk @ Qk @ Wk.T
 
@@ -110,9 +110,10 @@ class EKF(GaussianFilter):
 
         # TODO: To be implemented by the student
         # Compute Kalman gain
-        Kk          = self.Pk_bar @ Hk.T @ np.linalg.inv(Hk @ self.Pk_bar @ Hk.T + Vk @ Rk @ Vk.reshape((1,1)))
+        Kk          = self.Pk_bar @ Hk.T @ np.linalg.inv(Hk @ self.Pk_bar @ Hk.T + Vk @ Rk @ Vk.T)
 
         # Compute updated state and covariance
+        a           = zk - self.h(self.xk_bar)
         self.xk     = self.xk_bar + Kk @ (zk - self.h(self.xk_bar))
         I           = np.diag(np.ones(len(xk_bar)))
         self.Pk     = (I - Kk @ Hk) @ self.Pk_bar @ (I - Kk @ Hk).T

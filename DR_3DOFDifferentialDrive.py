@@ -20,6 +20,9 @@ class DR_3DOFDifferentialDrive(Localization):
         self.wheelBase = 0.5  # wheel base
         self.robot.pulse_x_wheelTurns = 4096  # number of pulses per wheel turn
 
+        # Compute Kn_inv matrix
+        self.Kn_inv = self.robot.pulse_x_wheelTurns*self.dt/(2*np.pi*self.wheelRadius) * np.array([[1, -self.wheelBase/2], [1, self.wheelBase/2]])
+
     def Localize(self, xk_1, uk):  # motion model
         """
         Motion model for the 3DOF (:math:`x_k=[x_{k}~y_{k}~\psi_{k}]^T`) Differential Drive Mobile robot using as input the readings of the wheel encoders (:math:`u_k=[n_L~n_R]^T`).

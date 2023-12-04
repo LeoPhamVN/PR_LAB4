@@ -3,6 +3,7 @@ from GaussianFilter import GaussianFilter
 import matplotlib.pyplot as plt
 from GetEllipse import GetEllipse
 import numpy as np
+
 class GFLocalization(Localization,GaussianFilter):
     """
     Map-less localization using a Gaussian filter.
@@ -117,7 +118,7 @@ class GFLocalization(Localization,GaussianFilter):
             
             # Log data
             self.Log(xsk, xk, Pk, xk_bar, zk)
-
+            
             # plot the estimated trajectory
             self.PlotUncertainty(xk, Pk)
             
