@@ -192,7 +192,7 @@ class Pose3D(Pose):
         """
         # TODO: To be completed by the student
         AxC = np.array([[AxB[0,0] + BxC[0,0]*cos(AxB[2,0]) - BxC[1,0]*sin(AxB[2,0])],
-                        [AxB[1,0] + BxC[0,0]*sin(AxB[2,0]) + BxC[1,0]*sin(AxB[2,0])],
+                        [AxB[1,0] + BxC[0,0]*sin(AxB[2,0]) + BxC[1,0]*cos(AxB[2,0])],
                         [AxB[2,0] + BxC[2,0]]])
         return AxC
 

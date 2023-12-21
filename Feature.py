@@ -106,6 +106,8 @@ class CartesianFeature(Feature,np.ndarray):
         # F is build as a list of F matrices, where the index of the list matches the dimension of the feature
         BxF.feature = obj
 
+        BxF.F = np.block([np.diag(np.ones(len(BxF.feature))), np.zeros((len(BxF.feature),1))])
+
         super().__init__(BxF,obj)
 
         # Finally, we must return the newly created object:
@@ -129,7 +131,7 @@ class CartesianFeature(Feature,np.ndarray):
         """
 
         # TODO: To be completed by the student
-
+        NxF = BxF.F @ Pose3D.oplus(NxB, (BxF.F).T @ BxF)
         return NxF
 
     def J_1boxplus(BxF, NxB):
@@ -146,7 +148,7 @@ class CartesianFeature(Feature,np.ndarray):
         """
 
         # TODO: To be completed by the student
-
+        J = BxF.F @ Pose3D.J_1oplus(NxB, (BxF.F).T @ BxF)
         return J
 
     def J_2boxplus(BxF, NxB):
@@ -163,7 +165,7 @@ class CartesianFeature(Feature,np.ndarray):
         """
 
         # TODO: To be completed by the student
-
+        J = BxF.F @ Pose3D.J_2oplus(NxB) @ (BxF.F).T
         return J
 
     def ToCartesian(self):
@@ -194,13 +196,13 @@ if __name__ == '__main__':
     print("J_1boxplus=", BxF.J_1boxplus(NxB3dof))
     print("J_2boxplus=", BxF.J_2boxplus(NxB3dof))
 
-    NxB4dof=Pose4D(np.array([[5,5,5,np.pi/2]]).T)
+    # NxB4dof=Pose4D(np.array([[5,5,5,np.pi/2]]).T)
 
-    NxF = BxF.boxplus(NxB4dof)
+    # NxF = BxF.boxplus(NxB4dof)
 
-    print("NxF=", NxF.T)
-    print("J_1boxplus=", BxF.J_1boxplus(NxB4dof))
-    print("J_2boxplus=", BxF.J_2boxplus(NxB4dof))
+    # print("NxF=", NxF.T)
+    # print("J_1boxplus=", BxF.J_1boxplus(NxB4dof))
+    # print("J_2boxplus=", BxF.J_2boxplus(NxB4dof))
 
     exit(0)
 

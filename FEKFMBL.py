@@ -64,8 +64,27 @@ class FEKFMBL(GFLocalization, MapFeature):
         """
 
         # TODO: To be completed by the student
+        # Get measurement. In this case is the heading
+        if self.headingData == True:
+            hm = self.hm(xk)
+        else:
+            hm = np.zeros((0,1))
+
+        # Get features
+        if self.featureData == True:
+            M = []
+            for i in range(len(self.M)):
+                if self.H[i] != 0:
+                    M.append(self.M[self.H[i]-1])
+            hf = self.hf(xk, M)
+        else:
+            hf = np.zeros((0,1))
+
+        # Stack
+        h_mf = np.block([[hm], [hf]])
 
         return h_mf
+
 
     def hm(self,xk):
         """
@@ -78,9 +97,9 @@ class FEKFMBL(GFLocalization, MapFeature):
         """
 
         # TODO: To be completed by the student
-
+        _hm = self.h_heading(xk)
         return _hm
-
+    
     def SquaredMahalanobisDistance(self, hfj, Pfj, zfi, Rfi):
         """
         Computes the squared Mahalanobis distance between the expected feature observation :math:`hf_j` and the feature observation :math:`z_{f_i}`.
@@ -93,7 +112,12 @@ class FEKFMBL(GFLocalization, MapFeature):
         """
 
         # TODO: To be completed by the student
-
+        # Compute inovation
+        v_ij = zfi - hfj
+        # Compute S matrix
+        S_ij = Rfi + Pfj
+        # Compute squared mahalandobis distance
+        D2_ij = v_ij.T @ np.linalg.inv(S_ij) @ v_ij
         return D2_ij
 
     def IndividualCompatibility(self, D2_ij, dof, alpha):
@@ -106,10 +130,10 @@ class FEKFMBL(GFLocalization, MapFeature):
         :return: bolean value indicating if the Mahalanobis distance is smaller than the threshold defined by the confidence level
         """
         # TODO: To be completed by the student
-
+        isCompatible = D2_ij < scipy.stats.chi2.ppf(alpha, dof)
         return isCompatible
 
-    def ICNN(self, hf, Phf, zf, Rf, dim):
+    def ICNN(self, hf, Phf, zf, Rf):
         """
         Individual Compatibility Nearest Neighbor (ICNN) data association algorithm. Given a set of expected feature
         observations :math:`h_f` and a set of feature observations :math:`z_f`, the algorithm returns a pairing hypothesis
@@ -125,8 +149,17 @@ class FEKFMBL(GFLocalization, MapFeature):
         """
 
         # TODO: To be completed by the student
-
-        return H
+        Hp = []
+        for j in range(len(zf)):
+            nearest = 0
+            D2_min = np.inf
+            for i in range(len(hf)):
+                D2_ij = self.SquaredMahalanobisDistance(hf[i], Phf[i], zf[j], Rf[j])
+                if self.IndividualCompatibility(D2_ij, self.xF_dim, self.alpha) and D2_ij < D2_min:
+                    nearest = i+1
+                    D2_min = D2_ij
+            Hp.append(nearest)
+        return Hp
 
     def DataAssociation(self, xk, Pk, zf, Rf):
         """
@@ -149,7 +182,15 @@ class FEKFMBL(GFLocalization, MapFeature):
         """
 
         # TODO: To be completed by the student
-
+        hF = [] 
+        PF = []
+        for i in range(self.nf):
+            hF_i = self.hfj(xk, self.M[i])
+            PF_i = self.Jhfjx(xk, self.M[i]) @ Pk @ self.Jhfjx(xk, self.M[i]).T
+            hF.append(hF_i)
+            PF.append(PF_i)
+        H = self.ICNN(hF, PF, zf, Rf)
+        self.H = H
         return H
 
     def Localize(self, xk_1, Pk_1):
@@ -164,10 +205,31 @@ class FEKFMBL(GFLocalization, MapFeature):
         """
 
         # TODO: To be completed by the student
+        # Get input to prediction step
+        uk, Qk          = self.GetInput()
+        # Prediction step
+        xk_bar, Pk_bar  = self.Prediction(uk, Qk, xk_1, Pk_1)
 
-        return xk, Pk
+        # Get measurement
+        zm, Rm, Hm, Vm  = self.GetMeasurements()
+        zf, Rf, Hf, Vf  = self.GetFeatures()
 
-    def StackMeasurementsAndFeatures(self, zm, Rm, Hm, Vm, zf, Rf, H):
+        # Data Association
+        Hp              = self.DataAssociation(xk_bar, Pk_bar, zf, Rf)
+        
+        # Stack
+        [zk, Rk, Hk, Vk, znp, Rnp] = self.StackMeasurementsAndFeatures(xk_bar, zm, Rm, Hm, Vm, zf, Rf, Hp)
+        # Update step
+        xk, Pk          = self.Update(zk, Rk, xk_bar, Pk_bar, Hk, Vk)
+        # xk = xk_bar
+        # Pk = Pk_bar
+
+        # self.xk = xk_bar
+        # self.Pk = Pk_bar
+
+        return xk, Pk, xk_bar, zk, Rk
+
+    def StackMeasurementsAndFeatures(self, xk, zm, Rm, Hm, Vm, zf, Rf, H):
         """
         Given the vector of  measurements observations :math:`z_m` together with their covariance matrix :math:`R_m`,
         the vector of feature observations :math:`z_f` together with their covariance matrix :math:`R_f`, The measurement observation matrix :math:`H_m`, the
@@ -184,15 +246,30 @@ class FEKFMBL(GFLocalization, MapFeature):
         :param Vm: measurement observation noise matrix
         :param zf: feature observations vector
         :param Rf: covariance matrix of the feature observations
-        :param H: features associations vector
+        :param Hp: features associations vector
         :return: vector of joint measurement and feature observations :math:`z_k` and its covariance matrix :math:`R_k`
         """
 
         # TODO: To be completed by the student
+        zp, Rp, Hp, Vp, znp, Rnp = self.SplitFeatures(xk, zf, Rf, H)
+
+        if len(zm) == 0:
+            zk, Rk, Hk, Vk = zp, Rp, Hp, Vp
+        elif len(zp) == 0:
+            zk, Rk, Hk, Vk = zm, Rm, Hm, Vm
+        else:
+            zk = np.block([[zm], [zp]])
+
+            # Add noises measurement of the feature (Noise are independent)
+            Rk = scipy.linalg.block_diag(Rm, Rp)
+
+            Hk = np.block([[Hm], [Hp]])
+
+            Vk = scipy.linalg.block_diag(Vm, Vp)
 
         return zk, Rk, Hk, Vk, znp, Rnp
 
-    def SplitFeatures(self, zf, Rf, H):
+    def SplitFeatures(self, xk, zf, Rf, H):
         """
         Given the vector of feature observations :math:`z_f` and their covariance matrix :math:`R_f`, and the vector of
         feature associations :math:`H`, this function returns the vector of paired feature observations :math:`z_p` together with
@@ -206,9 +283,42 @@ class FEKFMBL(GFLocalization, MapFeature):
         :return: vector of paired feature observations :math:`z_p`, covariance matrix of paired feature observations :math:`R_p`, vector of non-paired feature observations :math:`z_{np}`, covariance matrix of non-paired feature observations :math:`R_{np}`.
         """
         # TODO: To be completed by the student
+        zp  = []
+        znp = []
+        Rnp = []
+        if len(H) > 0:
+            zp = zf[0]
+            Rp = Rf[0]
+            Hp = self.Jhfjx(xk, self.M[0])
+            Vp = np.diag(np.ones(self.xF_dim))
+        else:
+            return np.zeros((0,0)), np.zeros((0,0)), np.zeros((0,0)), np.zeros((0,0)), znp, Rnp
+
+        for i in range(1,len(H)):
+            j = H[i]
+            if j != 0:
+                # Add feature measurement
+                zp = np.block([[zp], [zf[i]]])
+                # Add noises measurement of the feature (Noise are independent)
+                Rp = scipy.linalg.block_diag(Rp, Rf[i])
+
+                Hp = np.block([[Hp], [self.Jhfjx(xk, self.M[j-1])]])
+
+                Vp = scipy.linalg.block_diag(Vp, np.diag(np.ones(self.xF_dim)))
 
         return zp, Rp, Hp, Vp, znp, Rnp
 
+    # def BlockArray(self, v, v_dim):
+    #     row_num, col_num = np.shape(v)
+    #     vo = []
+    #     if col_num > 1:
+    #         for i in range(row_num//v_dim):
+    #             vo.append(v[i:i+v_dim, i:i+v_dim])
+    #     else:
+    #         for i in range(row_num//v_dim):
+    #             vo.append(v[i:i+v_dim, 0])
+    #     return vo
+        
     def PlotFeatureObservationUncertainty(self, zf, Rf, color):  # plots the feature observation uncertainty ellipse
         """
         Plots the uncertainty ellipse of the feature observations. This method is called by :meth:`FEKFMBL.PlotUncertainty`.
@@ -231,9 +341,11 @@ class FEKFMBL(GFLocalization, MapFeature):
         NxB = self.GetRobotPose(self.robot.xsk)
 
         # For all feature observations
-        nzf = 0 if zf is None else zf.size // self.zfi_dim
+        # nzf = 0 if zf is None else zf.size // self.zfi_dim
+        nzf = self.nf
         for i in range(0, nzf):
-            BxF = self.Feature(zf[[i]])  # feature observation in the B-Frame
+            print(zf[i].reshape((2,1)))
+            BxF = self.Feature(zf[i].reshape((2,1)))  # feature observation in the B-Frame
             BRF = Rf[[i,i]]  # feature observation covariance in the B-Frame
             NxF = self.g(NxB, BxF)
             J = self.Jgv(NxB, BxF)
@@ -281,7 +393,7 @@ class FEKFMBL(GFLocalization, MapFeature):
 
         """
         # Plot Robot Ellipse
-        robot_ellipse = GetEllipse(self.robot.xsk, self._GetRobotPoseCovariance(self.Pk))
+        robot_ellipse = GetEllipse(self.robot.xsk, self.GetRobotPoseCovariance(self.Pk))
         self.plt_robotEllipse.set_data(robot_ellipse[0], robot_ellipse[1])  # update it
 
         # Plot Robot Trajectory
@@ -302,8 +414,8 @@ class FEKFMBL(GFLocalization, MapFeature):
         """
         if self.k % self.robot.visualizationInterval == 0:
             self.PlotRobotUncertainty()
-            self.PlotFeatureObservationUncertainty(zf, Rf,'b')
-            self.PlotExpectedFeaturesObservationsUncertainty()
+            # self.PlotFeatureObservationUncertainty(zf, Rf,'b')
+            # self.PlotExpectedFeaturesObservationsUncertainty()
 
     def GetRobotPose(self, xk):
         """

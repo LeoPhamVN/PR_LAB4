@@ -1,6 +1,8 @@
 from SimulatedRobot import *
 from IndexStruct import *
 from Pose import *
+from Feature import *
+from MapFeature import *
 import scipy
 from roboticstoolbox.mobile.Animations import *
 import numpy as np
@@ -67,6 +69,10 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         self.encoder_reading_frequency = 1  # frequency of encoder readings
         self.Re= np.diag(np.array([22 ** 2, 22 ** 2]))  # covariance of simulated wheel encoder noise
 
+        self.Cartesian2D_feature_reading_frequency = 10  # frequency of Polar2D feature readings
+        self.Cartesian2D_max_range = 50  # maximum Polar2D range, used to simulate the field of view
+        self.Rfc = np.diag(np.array([1 ** 2, 1 ** 2]))  # covariance of simulated Polar2D feature noise
+
         self.Polar2D_feature_reading_frequency = 50  # frequency of Polar2D feature readings
         self.Polar2D_max_range = 50  # maximum Polar2D range, used to simulate the field of view
         self.Rfp = np.diag(np.array([1 ** 2, np.deg2rad(5) ** 2]))  # covariance of simulated Polar2D feature noise
@@ -74,7 +80,7 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         self.xy_feature_reading_frequency = 50  # frequency of XY feature readings
         self.xy_max_range = 50  # maximum XY range, used to simulate the field of view
 
-        self.yaw_reading_frequency = 20  # frequency of Yasw readings
+        self.yaw_reading_frequency = 5000000  # frequency of Yasw readings
         self.v_yaw_std = np.deg2rad(5)  # std deviation of simulated heading noise
 
     def fs(self, xsk_1, usk):  # input velocity motion model with velocity noise
@@ -197,10 +203,36 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         else:
             return np.zeros((0,0)), np.zeros((0,0))
 
+    def ReadFeatureCartesian2D(self):
+        """ Simulates the feature reading of the robot.
+
+        :return: 2D Cartesian distance from the robot to features in the robot frame and the covariance of its noise *R_feature*
+        """
+
+        # TODO: to be completed by the student
+        # Initialise the measurement zsk with size is DoF of the feature by 1
+        # zsk = np.empty((self.DoF_f,1))
+        zsk = []
+        Rsk = []
+
+        # Number of feature loop
+        for i in range(-1,self.nf-1):
+            zsk.append(MapFeature().o2s(self.M[i].boxplus(Pose3D.ominus(self.xsk[0:3,0].reshape((3,1))))))
+            # Measurement noise
+            Rsk.append(self.Rfc)
+
+        if self.k % self.Cartesian2D_feature_reading_frequency == 0:
+            return zsk, Rsk
+        else:
+            return [], []
+        
+
+
     def PlotRobot(self):
         """ Updates the plot of the robot at the current pose """
 
         self.vehicleIcon.update([self.xsk[0], self.xsk[1], self.xsk[2]])
         plt.pause(0.0000001)
         return
+
 

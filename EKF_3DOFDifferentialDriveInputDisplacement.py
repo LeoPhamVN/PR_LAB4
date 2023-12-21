@@ -48,7 +48,7 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
         J = Pose3D.J_2oplus(xk_1.reshape((3,1)))
         return J
 
-    def h(self, xk):  #:hm(self, xk):
+    def h_heading(self, xk):  #:hm(self, xk):
         # TODO: To be completed by the student
         # Obserse the heading of the robot
         h   = xk[2,0]
@@ -94,6 +94,10 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
         Hk      = np.array([0., 0., 1.]).reshape((1,3))
         # Compute V matrix
         Vk      = np.diag([1.])
+        # Raise flag got measurement
+        if len(zk) != 0:
+            self.headingData = True
+
         return zk, Rk, Hk, Vk
 
 

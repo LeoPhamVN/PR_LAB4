@@ -39,6 +39,9 @@ class GFLocalization(Localization,GaussianFilter):
         self.yTraj = []
         self.trajectory = plt.plot([], [], marker='.', color='blue', markersize=1)
 
+        self.headingData = False
+        self.featureData = False
+
         super().__init__(index, kSteps, robot, x0, P0, *args)  # call parent constructor
 
     def GetInput(self):  # get the input from the robot. To be overidden by the child class
@@ -93,7 +96,12 @@ class GFLocalization(Localization,GaussianFilter):
         zk, Rk, Hk, Vk  = self.GetMeasurements()
         # Update step
         xk, Pk          = self.Update(zk, Rk, xk_bar, Pk_bar, Hk, Vk)
-        
+        # xk = xk_bar
+        # Pk = Pk_bar
+
+        # self.xk = xk_bar
+        # self.Pk = Pk_bar
+
         return xk, Pk, xk_bar, zk
 
     def LocalizationLoop(self, x0, P0, usk):
@@ -111,7 +119,8 @@ class GFLocalization(Localization,GaussianFilter):
 
         for self.k in range(self.kSteps):
             xsk = self.robot.fs(xsk_1, usk)  # Simulate the robot motion
-            xk, Pk, xk_bar, zk = self.Localize(xk_1, Pk_1)  # Localize the robot
+            # xk, Pk, xk_bar, zk = self.Localize(xk_1, Pk_1)  # Localize the robot
+            xk, Pk, xk_bar, zk, Rk = self.Localize(xk_1, Pk_1)  # Localize the robot
 
             xsk_1 = xsk  # current state becomes previous state for next iteration
             xk_1 = xk
@@ -121,7 +130,8 @@ class GFLocalization(Localization,GaussianFilter):
             self.Log(xsk, xk, Pk, xk_bar, zk)
             
             # plot the estimated trajectory
-            self.PlotUncertainty(xk, Pk)
+            # self.PlotUncertainty(xk, Pk)
+            self.PlotUncertainty(zk, Rk)
 
             # Add to save figure to write the report
             # if self.k % 400 == 10:

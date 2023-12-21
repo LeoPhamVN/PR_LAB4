@@ -50,7 +50,7 @@ class SimulatedRobot:
         self.xsk = xs0 # Current pose is the initial state
         self.xsk_1 = xs0  # Previouse state is the initial robot state
         self.M = map  # position of the features in the N-Frame
-        self.nf = len(map)  # number of features
+        self.nf, self.DoF_f, _ = np.shape(self.M)  # number of features and the degree of freedom of the features
 
         # Inititalize the robot animation
         self.vehicleIcon = VehicleIcon('DifferentialDrive.png', scale=1, rotation=90) # Image of the robot to be used in the animation. By default it uses the image of a Differential Mobile Robot.

@@ -31,7 +31,7 @@ class Localization:
             if index[s].state == 'y': y_state_exists = True
         self.plot_xy_estimation = x_state_exists & y_state_exists
 
-        self.robot.visualizationInterval = 20
+        self.robot.visualizationInterval = 1#20
 
         self.xTraj = []
         self.yTraj = []

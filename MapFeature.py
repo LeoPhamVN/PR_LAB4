@@ -52,6 +52,13 @@ class MapFeature:
         :return: vector in the observation representation
         """
         # TODO: To be implemented by the student
+        # Compute transformation matrix from the store to observation representation
+        # Defaut: store representation:         Cartersion
+        #         observation representation:   Cartersion
+        # transformation matrix is the Identity matrix
+        transform_matrix = np.diag(np.ones(np.shape(v)[0]))
+        # Compute a vector on the observation representation
+        Observation_representation = transform_matrix @ v
 
         return Observation_representation
 
@@ -65,6 +72,14 @@ class MapFeature:
         :return: vector in the storage representation
         """
         # TODO: To be implemented by the student
+        # Compute transformation matrix from the observation to store representation
+        # Defaut: store representation:         Cartersion
+        #         observation representation:   Cartersion
+        # transformation matrix is the Identity matrix
+        transform_matrix = np.diag(np.ones(np.shape(v)[0]))
+        # Compute a vector on the observation representation
+        Storage_representation = transform_matrix @ v
+
         return Storage_representation
 
     def J_s2o(self, v):
@@ -77,7 +92,7 @@ class MapFeature:
         :return: Jacobian of the conversion function from the storage representation to the observation representation
         """
         # TODO: To be implemented by the student
-
+        J = np.diag(np.ones(np.shape(v)[0]))
         return J
 
     def J_o2s(self, v):
@@ -90,9 +105,10 @@ class MapFeature:
         :return: Jacobian of the conversion function from the observation representation to the storage representation
         """
         # TODO: To be implemented by the student
+        J = np.diag(np.ones(np.shape(v)[0]))
         return J
 
-    def hf(self, xk):  # Observation function for al zf observations
+    def hf(self, xk, M):  # Observation function for al zf observations
         """
         This is the direct observation model, implementing the feature observation equation for the data
         association hypothesis :math:`\mathcal{H}`, the features observation vector :math:`z_f, the state vector :math:`x_k`,
@@ -124,10 +140,17 @@ class MapFeature:
         :return: vector of expected features observations corresponding to the vector of observed features :math:`z_f`.
         """
         # TODO: To be implemented by the student
+        nf, DoF_f, _ = np.shape(M)  # number of features and the degree of freedom of the features
+        
+        _hf = self.hfj(xk, M[0])
 
+        # Number of feature loop
+        for i in range(1,nf):
+            _hf = np.block([[_hf],[self.hfj(xk, M[i])]])
+        
         return _hf
 
-    def Jhfx(self, xk):  # Jacobian wrt x of the feature observation function for all zf observations
+    def Jhfx(self, xk, M):  # Jacobian wrt x of the feature observation function for all zf observations
         """
         Computes the Jacobian of the feature observation function :meth:`hf` (eq. :eq:`eq-hf`), with respect to the state vector :math:`\\bar{x}_k`:
 
@@ -145,10 +168,17 @@ class MapFeature:
         """
 
         # TODO: To be implemented by the student
+        xB_dim = np.shape(xk)[0]
+        nf, DoF_f, _ = np.shape(M)  # number of features and the degree of freedom of the features
+        
+        J = self.Jhfjx(xk, M[0])
 
+        # Number of feature loop
+        for i in range(1,nf):
+            J = np.block([[J],[self.Jhfjx(xk, M[i])]])
         return J
 
-    def Jhfv(self, xk):  # Jacobian wrt v of the observation function for a feature
+    def Jhfv(self, xk, M):  # Jacobian wrt v of the observation function for a feature
         """
         Computes the Jacobian of the observation function :meth:`hf` (eq. :eq:`eq-hf`) with respect to the observation noise :math:`v_k`.
         Normally, the observation noise in the observation B-Frame is linear (see eq. :eq:`eq-hf-element-wise`) so the Jacobian is the identity matrix.
@@ -171,6 +201,10 @@ class MapFeature:
         :return: Jacobian of the observation function :meth:`hf` with respect ro the observation noise :math:`v_k` :math:`J_{hfv}=I_{n_{zf}\\times n_{zf}}`
         """
         # TODO: To be implemented by the student
+        nf, DoF_f, _ = np.shape(M)  # number of features and the degree of freedom of the features
+
+        # Compute the J matrix
+        J = np.diag(np.ones(nf*DoF_f))
         return J
 
     def hfj(self, xk_bar, Fj):  # Observation function for zf_i and x_Fj
@@ -198,6 +232,10 @@ class MapFeature:
         # h(xk_bar,vk)=(-) xk_bar) [+] x_Fj + vk
 
         # TODO: To be implemented by the student
+        # Get Pose vector from the filter state
+        NxB = xk_bar[0:3,0].reshape((3,1))
+
+        _hfj = self.o2s(Fj.boxplus(Pose3D.ominus(NxB)))
         return _hfj
 
     def Jhfjx(self, xk, Fj):  # Jacobian wrt x of the observation function for feature observation i
@@ -220,6 +258,15 @@ class MapFeature:
         """
         # J_hfjx = J_s2o @ J_1[+] * J_(-)
         # TODO: To be implemented by the student
+        # Get dimensionality of the filter state and the pose
+        xB_dim = np.shape(xk)[0]
+        xBpose_dim = 3
+        # Get Pose vector from the filter state
+        NxB = xk[0:xBpose_dim,0].reshape((xBpose_dim,1))
+        # Compute the F matrix, which converts vector from filter state to pose
+        F = np.block([np.diag(np.ones(xBpose_dim)), np.zeros((xBpose_dim, xB_dim-xBpose_dim))])
+        # Compute the Jacobean matrix
+        J = self.J_s2o(Fj.boxplus(Pose3D.ominus(NxB))) @ CartesianFeature.J_1boxplus(Fj, Pose3D.ominus(NxB)) @ Pose3D.J_ominus(NxB) @ F
         return J
 
     def g(self, xk, BxFj):  # xBp [+] (BxFj + vk)
@@ -242,6 +289,13 @@ class MapFeature:
         """
 
         # TODO: To be implemented by the student
+        # Get dimensionality of the pose
+        xBpose_dim = 3
+        # Get Pose vector from the filter state
+        NxB = xk[0:xBpose_dim,0].reshape((xBpose_dim,1))
+
+        NxFj = (self.o2s(BxFj)).boxplus(NxB)
+
         return NxFj
 
     def Jgx(self, xk, BxFj):  # Jacobian wrt xk of the inverse sensor model for a single feature observation
@@ -262,6 +316,15 @@ class MapFeature:
         """
 
         # TODO: To be implemented by the student
+        # Get dimensionality of the filter state and the pose
+        xB_dim = np.shape(xk)[0]
+        xBpose_dim = 3
+
+        xF_dim = np.shape(BxFj)[0]
+        # Get Pose vector from the filter state
+        NxB = xk[0:xBpose_dim,0].reshape((xBpose_dim,1))
+        a = CartesianFeature.J_1boxplus(self.o2s(BxFj), NxB)
+        J = np.block([CartesianFeature.J_1boxplus(self.o2s(BxFj), NxB), np.zeros((xF_dim, xB_dim-xF_dim))])
         return J
 
     def Jgv(self, xk, BxFj):
@@ -278,6 +341,12 @@ class MapFeature:
         :return: Jacobian of the inverse observation model :meth:`g` with respect to the observation noise :math:`J_{gv}` (see eq. :eq:`eq-Jgv`).
         """
         # TODO: To be implemented by the student
+        # Get dimensionality of the pose
+        xBpose_dim = 3
+        # Get Pose vector from the filter state
+        NxB = xk[0:xBpose_dim,0].reshape((xBpose_dim,1))
+        
+        J = CartesianFeature.J_2boxplus(self.o2s(BxFj), NxB) @ self.J_o2s(BxFj)
         return J
 
 
@@ -299,6 +368,67 @@ class Cartesian2DMapFeature(MapFeature):
 
         """
         # TODO: To be implemented by the student
+        zf, Rf = self.robot.ReadFeatureCartesian2D()
+        Hf = []
+        Vf = []
+        # Raise flag got feature
+        if len(zf) != 0:
+            self.featureData = True
+        return zf, Rf, Hf, Vf
+
+
+class Polar2DMapFeature(MapFeature):
+    """
+    This class inherits from the :class:`MapFeature` and implements a 2D Cartesian feature model for the MBL problem. The Cartesian coordinates are used for both,
+    observing the feature and for its storage within the map. This class overrides the :meth:`GetFeatures` method to read
+    the 2D Cartesian Features from the robot.
+    """
+
+    def GetFeatures(self):
+        """
+        Reads the Features observations from the sensors. For all features within the field of view of the sensor, the
+        method returns the list of robot-related poses and the covariance of their corresponding observation noise in **2D Cartesian coordinates**.
+
+        :return zk, Rk: list of Cartesian features observations in the B-Frame and the covariance of their corresponding observation noise:
+            * :math:`z_k=[^Bx_{F_i}^T \\cdots ^Bx_{F_j}^T \\cdots ^Bx_{F_k}^T]^T`
+            * :math:`R_k=block\\_diag([R_{F_i} \\cdots R_{F_j} \\cdots R_{F_k}])`
+
+        """
+        # TODO: To be implemented by the student
+        # self.robot.ReadCompass()
+
         return zk, Rk
+    
+    def s2o(self, v):
+        """
+        Conversion function from the storage representation to the observation representation.
+        By default, it returns the same vector as the one provided as input, assuming that the observation representation is the same as the storage representation.
+        In case it is not, this method must be overriden in the child class.
+
+        :param v: vector in the storage representation
+        :return: vector in the observation representation
+        """
+        # TODO: To be implemented by the student
+        Observation_representation = v
+        return Observation_representation
+    
 
 
+
+
+if __name__ == '__main__':
+    M = [CartesianFeature(np.array([[-40, 5]]).T),
+           CartesianFeature(np.array([[-5, 40]]).T),
+           CartesianFeature(np.array([[-5, 25]]).T),
+           CartesianFeature(np.array([[-3, 50]]).T),
+           CartesianFeature(np.array([[-20, 3]]).T),
+           CartesianFeature(np.array([[40,-40]]).T)]  # feature map. Position of 2 point features in the world frame.
+
+    xs0 = np.zeros((6, 1))
+    
+    a = Cartesian2DMapFeature().Jgx(xs0, M[0])
+
+    print("a=", a)
+
+
+    exit(0)
