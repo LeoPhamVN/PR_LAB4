@@ -2,7 +2,7 @@ import scipy
 from GFLocalization import *
 from MapFeature import *
 from EKF import *
-import math
+from blockarray import *
 
 class FEKFMBL(GFLocalization, MapFeature):
     """
@@ -76,7 +76,7 @@ class FEKFMBL(GFLocalization, MapFeature):
             for i in range(len(self.M)):
                 if self.H[i] != 0:
                     M.append(self.M[self.H[i]-1])
-            hf = self.hf(xk, M)
+            hf = self.hf(xk)
         else:
             hf = np.zeros((0,1))
 
@@ -84,7 +84,6 @@ class FEKFMBL(GFLocalization, MapFeature):
         h_mf = np.block([[hm], [hf]])
 
         return h_mf
-
 
     def hm(self,xk):
         """
@@ -185,8 +184,9 @@ class FEKFMBL(GFLocalization, MapFeature):
         hF = [] 
         PF = []
         for i in range(self.nf):
-            hF_i = self.hfj(xk, self.M[i])
-            PF_i = self.Jhfjx(xk, self.M[i]) @ Pk @ self.Jhfjx(xk, self.M[i]).T
+            hF_i = self.hfj(xk, i)
+            PF_i = self.Jhfjx(xk, i) @ Pk @ self.Jhfjx(xk, i).T
+
             hF.append(hF_i)
             PF.append(PF_i)
         H = self.ICNN(hF, PF, zf, Rf)
@@ -289,7 +289,7 @@ class FEKFMBL(GFLocalization, MapFeature):
         if len(H) > 0:
             zp = zf[0]
             Rp = Rf[0]
-            Hp = self.Jhfjx(xk, self.M[0])
+            Hp = self.Jhfjx(xk, 0)
             Vp = np.diag(np.ones(self.xF_dim))
         else:
             return np.zeros((0,0)), np.zeros((0,0)), np.zeros((0,0)), np.zeros((0,0)), znp, Rnp
@@ -302,22 +302,11 @@ class FEKFMBL(GFLocalization, MapFeature):
                 # Add noises measurement of the feature (Noise are independent)
                 Rp = scipy.linalg.block_diag(Rp, Rf[i])
 
-                Hp = np.block([[Hp], [self.Jhfjx(xk, self.M[j-1])]])
+                Hp = np.block([[Hp], [self.Jhfjx(xk, j-1)]])
 
                 Vp = scipy.linalg.block_diag(Vp, np.diag(np.ones(self.xF_dim)))
 
         return zp, Rp, Hp, Vp, znp, Rnp
-
-    # def BlockArray(self, v, v_dim):
-    #     row_num, col_num = np.shape(v)
-    #     vo = []
-    #     if col_num > 1:
-    #         for i in range(row_num//v_dim):
-    #             vo.append(v[i:i+v_dim, i:i+v_dim])
-    #     else:
-    #         for i in range(row_num//v_dim):
-    #             vo.append(v[i:i+v_dim, 0])
-    #     return vo
         
     def PlotFeatureObservationUncertainty(self, zf, Rf, color):  # plots the feature observation uncertainty ellipse
         """
@@ -326,6 +315,11 @@ class FEKFMBL(GFLocalization, MapFeature):
         :param zf: vector of feature observations
         :param Rf: covariance matrix of the feature observations
         """
+
+        if len(zf) % 2 == 1:
+            zf = zf[1:]
+        else:
+            zf = zf
 
         zf=BlockArray(zf,self.zfi_dim)
         Rf=BlockArray(Rf,self.zfi_dim)
@@ -341,13 +335,11 @@ class FEKFMBL(GFLocalization, MapFeature):
         NxB = self.GetRobotPose(self.robot.xsk)
 
         # For all feature observations
-        # nzf = 0 if zf is None else zf.size // self.zfi_dim
-        nzf = self.nf
+        nzf = 0 if zf is None else zf.size // self.zfi_dim
         for i in range(0, nzf):
-            print(zf[i].reshape((2,1)))
-            BxF = self.Feature(zf[i].reshape((2,1)))  # feature observation in the B-Frame
+            BxF = self.Feature(zf[[i]])  # feature observation in the B-Frame
             BRF = Rf[[i,i]]  # feature observation covariance in the B-Frame
-            NxF = self.g(NxB, BxF)
+            NxF = self.Feature(self.g(NxB, BxF))
             J = self.Jgv(NxB, BxF)
             NRf = J @ BRF @ J.T
             NxF_Plot = NxF.ToCartesian()
@@ -374,7 +366,7 @@ class FEKFMBL(GFLocalization, MapFeature):
             J = self.Jhfjx(self.xk, Fj)
             P_h_Fj = J @ self.Pk @ J.T # expected feature observation covariance in the B-Frame in the observation space
 
-            Nhx_Fj = self.g(self.xk, h_Fj) # expected feature observation in the N-Frame in storage space
+            Nhx_Fj = self.Feature(self.g(self.xk, h_Fj)) # expected feature observation in the N-Frame in storage space
             #Jx = self.Jgx(self.xk, h_Fj)
             Jv = self.Jgv(self.xk, h_Fj)
 
@@ -414,8 +406,8 @@ class FEKFMBL(GFLocalization, MapFeature):
         """
         if self.k % self.robot.visualizationInterval == 0:
             self.PlotRobotUncertainty()
-            # self.PlotFeatureObservationUncertainty(zf, Rf,'b')
-            # self.PlotExpectedFeaturesObservationsUncertainty()
+            self.PlotFeatureObservationUncertainty(zf, Rf,'b')
+            self.PlotExpectedFeaturesObservationsUncertainty()
 
     def GetRobotPose(self, xk):
         """

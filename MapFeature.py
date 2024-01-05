@@ -108,7 +108,7 @@ class MapFeature:
         J = np.diag(np.ones(np.shape(v)[0]))
         return J
 
-    def hf(self, xk, M):  # Observation function for al zf observations
+    def hf(self, xk):  # Observation function for al zf observations
         """
         This is the direct observation model, implementing the feature observation equation for the data
         association hypothesis :math:`\mathcal{H}`, the features observation vector :math:`z_f, the state vector :math:`x_k`,
@@ -139,18 +139,16 @@ class MapFeature:
         :param xk: state vector mean :math:`\\hat x_k`.
         :return: vector of expected features observations corresponding to the vector of observed features :math:`z_f`.
         """
-        # TODO: To be implemented by the student
-        nf, DoF_f, _ = np.shape(M)  # number of features and the degree of freedom of the features
-        
-        _hf = self.hfj(xk, M[0])
+        # TODO: To be implemented by the student    
+        _hf = self.hfj(xk, 0)
 
         # Number of feature loop
-        for i in range(1,nf):
-            _hf = np.block([[_hf],[self.hfj(xk, M[i])]])
+        for i in range(1,self.nf):
+            _hf = np.block([[_hf],[self.hfj(xk, i)]])
         
         return _hf
 
-    def Jhfx(self, xk, M):  # Jacobian wrt x of the feature observation function for all zf observations
+    def Jhfx(self, xk):  # Jacobian wrt x of the feature observation function for all zf observations
         """
         Computes the Jacobian of the feature observation function :meth:`hf` (eq. :eq:`eq-hf`), with respect to the state vector :math:`\\bar{x}_k`:
 
@@ -169,16 +167,15 @@ class MapFeature:
 
         # TODO: To be implemented by the student
         xB_dim = np.shape(xk)[0]
-        nf, DoF_f, _ = np.shape(M)  # number of features and the degree of freedom of the features
         
-        J = self.Jhfjx(xk, M[0])
+        J = self.Jhfjx(xk, 0)
 
         # Number of feature loop
-        for i in range(1,nf):
-            J = np.block([[J],[self.Jhfjx(xk, M[i])]])
+        for i in range(1,self.nf):
+            J = np.block([[J],[self.Jhfjx(xk, i)]])
         return J
 
-    def Jhfv(self, xk, M):  # Jacobian wrt v of the observation function for a feature
+    def Jhfv(self, xk):  # Jacobian wrt v of the observation function for a feature
         """
         Computes the Jacobian of the observation function :meth:`hf` (eq. :eq:`eq-hf`) with respect to the observation noise :math:`v_k`.
         Normally, the observation noise in the observation B-Frame is linear (see eq. :eq:`eq-hf-element-wise`) so the Jacobian is the identity matrix.
@@ -201,10 +198,8 @@ class MapFeature:
         :return: Jacobian of the observation function :meth:`hf` with respect ro the observation noise :math:`v_k` :math:`J_{hfv}=I_{n_{zf}\\times n_{zf}}`
         """
         # TODO: To be implemented by the student
-        nf, DoF_f, _ = np.shape(M)  # number of features and the degree of freedom of the features
-
         # Compute the J matrix
-        J = np.diag(np.ones(nf*DoF_f))
+        J = np.diag(np.ones(self.nf*self.xF_dim))
         return J
 
     def hfj(self, xk_bar, Fj):  # Observation function for zf_i and x_Fj
@@ -234,8 +229,8 @@ class MapFeature:
         # TODO: To be implemented by the student
         # Get Pose vector from the filter state
         NxB = xk_bar[0:3,0].reshape((3,1))
-
-        _hfj = self.o2s(Fj.boxplus(Pose3D.ominus(NxB)))
+        a = self.M[Fj]
+        _hfj = self.o2s(self.M[Fj].boxplus(Pose3D.ominus(NxB)))
         return _hfj
 
     def Jhfjx(self, xk, Fj):  # Jacobian wrt x of the observation function for feature observation i
@@ -266,7 +261,7 @@ class MapFeature:
         # Compute the F matrix, which converts vector from filter state to pose
         F = np.block([np.diag(np.ones(xBpose_dim)), np.zeros((xBpose_dim, xB_dim-xBpose_dim))])
         # Compute the Jacobean matrix
-        J = self.J_s2o(Fj.boxplus(Pose3D.ominus(NxB))) @ CartesianFeature.J_1boxplus(Fj, Pose3D.ominus(NxB)) @ Pose3D.J_ominus(NxB) @ F
+        J = self.J_s2o(self.M[Fj].boxplus(Pose3D.ominus(NxB))) @ CartesianFeature.J_1boxplus(self.M[Fj], Pose3D.ominus(NxB)) @ Pose3D.J_ominus(NxB) @ F
         return J
 
     def g(self, xk, BxFj):  # xBp [+] (BxFj + vk)
