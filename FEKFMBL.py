@@ -72,17 +72,18 @@ class FEKFMBL(GFLocalization, MapFeature):
 
         # Get features
         if self.featureData == True:
-            M = []
+            index_mapping = []
             for i in range(len(self.M)):
                 if self.H[i] != 0:
-                    M.append(self.M[self.H[i]-1])
-            hf = self.hf(xk)
+                    index_mapping.append(self.H[i]-1)
+            hf = self.hf(xk, index_mapping)
         else:
             hf = np.zeros((0,1))
 
         # Stack
         h_mf = np.block([[hm], [hf]])
-
+        if len(h_mf) == 10:
+            a = 1
         return h_mf
 
     def hm(self,xk):
@@ -218,14 +219,10 @@ class FEKFMBL(GFLocalization, MapFeature):
         Hp              = self.DataAssociation(xk_bar, Pk_bar, zf, Rf)
         
         # Stack
+        a = self.h(xk_bar)
         [zk, Rk, Hk, Vk, znp, Rnp] = self.StackMeasurementsAndFeatures(xk_bar, zm, Rm, Hm, Vm, zf, Rf, Hp)
         # Update step
         xk, Pk          = self.Update(zk, Rk, xk_bar, Pk_bar, Hk, Vk)
-        # xk = xk_bar
-        # Pk = Pk_bar
-
-        # self.xk = xk_bar
-        # self.Pk = Pk_bar
 
         return xk, Pk, xk_bar, zk, Rk
 
@@ -286,15 +283,24 @@ class FEKFMBL(GFLocalization, MapFeature):
         zp  = []
         znp = []
         Rnp = []
-        if len(H) > 0:
-            zp = zf[0]
-            Rp = Rf[0]
-            Hp = self.Jhfjx(xk, 0)
-            Vp = np.diag(np.ones(self.xF_dim))
-        else:
-            return np.zeros((0,0)), np.zeros((0,0)), np.zeros((0,0)), np.zeros((0,0)), znp, Rnp
 
-        for i in range(1,len(H)):
+        if len(H) > 0:
+            for ii in range(0,len(H)):
+                if H[ii] != 0:
+                    zp = zf[ii]
+                    Rp = Rf[ii]
+                    Hp = self.Jhfjx(xk, ii)
+                    Vp = np.diag(np.ones(self.xF_dim))
+                    break
+        else:
+            self.featureData = False
+            return np.zeros((0,0)), np.zeros((0,0)), np.zeros((0,0)), np.zeros((0,0)), znp, Rnp
+        
+        if ii+1 == len(H):
+            self.featureData = False
+            return np.zeros((0,0)), np.zeros((0,0)), np.zeros((0,0)), np.zeros((0,0)), znp, Rnp
+        
+        for i in range(ii+1,len(H)):
             j = H[i]
             if j != 0:
                 # Add feature measurement
@@ -306,6 +312,8 @@ class FEKFMBL(GFLocalization, MapFeature):
 
                 Vp = scipy.linalg.block_diag(Vp, np.diag(np.ones(self.xF_dim)))
 
+        if len(zp) == 10:
+            a = 1
         return zp, Rp, Hp, Vp, znp, Rnp
         
     def PlotFeatureObservationUncertainty(self, zf, Rf, color):  # plots the feature observation uncertainty ellipse

@@ -69,18 +69,18 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
         self.encoder_reading_frequency = 1  # frequency of encoder readings
         self.Re= np.diag(np.array([22 ** 2, 22 ** 2]))  # covariance of simulated wheel encoder noise
 
-        self.Cartesian2D_feature_reading_frequency = 10 # frequency of Polar2D feature readings
-        self.Cartesian2D_max_range = 50  # maximum Polar2D range, used to simulate the field of view
-        self.Rfc = np.diag(np.array([0.5 ** 2, 0.5 ** 2]))  # covariance of simulated Polar2D feature noise
+        self.Cartesian2D_feature_reading_frequency = 0 # frequency of Cartesian2D feature readings
+        self.Cartesian2D_max_range = 50  # maximum Cartesian2D range, used to simulate the field of view
+        self.Rfc = np.diag(np.array([0.1 ** 2, 0.1 ** 2]))  # covariance of simulated Cartesian2D feature noise
 
         self.Polar2D_feature_reading_frequency = 50  # frequency of Polar2D feature readings
         self.Polar2D_max_range = 50  # maximum Polar2D range, used to simulate the field of view
-        self.Rfp = np.diag(np.array([1 ** 2, np.deg2rad(5) ** 2]))  # covariance of simulated Polar2D feature noise
+        self.Rfp = np.diag(np.array([0.01 ** 2, np.deg2rad(0.1) ** 2]))  # covariance of simulated Polar2D feature noise
         
         self.xy_feature_reading_frequency = 50  # frequency of XY feature readings
         self.xy_max_range = 50  # maximum XY range, used to simulate the field of view
 
-        self.yaw_reading_frequency = 1  # frequency of Yasw readings
+        self.yaw_reading_frequency = 0 # frequency of Yasw readings
         self.v_yaw_std = np.deg2rad(5)  # std deviation of simulated heading noise
 
     def fs(self, xsk_1, usk):  # input velocity motion model with velocity noise
@@ -177,7 +177,7 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
 
         zsk += noise  
 
-        if self.k % self.encoder_reading_frequency == 0:
+        if self.encoder_reading_frequency != 0 and self.k % self.encoder_reading_frequency == 0:
             return zsk, Rsk
         else:
             return np.zeros((0,0)), np.zeros((0,0))
@@ -198,7 +198,7 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
 
         theta_k += noise
 
-        if self.k % self.yaw_reading_frequency == 0:
+        if self.yaw_reading_frequency != 0 and self.k % self.yaw_reading_frequency == 0:
             return theta_k, R_yaw
         else:
             return np.zeros((0,0)), np.zeros((0,0))
@@ -211,17 +211,41 @@ class DifferentialDriveSimulatedRobot(SimulatedRobot):
 
         # TODO: to be completed by the student
         # Initialise the measurement zsk with size is DoF of the feature by 1
-        # zsk = np.empty((self.DoF_f,1))
         zsk = []
         Rsk = []
 
         # Number of feature loop
         for i in range(0,self.nf):
-            zsk.append(MapFeature().o2s(self.M[i].boxplus(Pose3D.ominus(self.xsk[0:3,0].reshape((3,1))))))
+            noise = np.random.normal(0, np.sqrt(self.Rfc.diagonal())).reshape((len(self.Rfc),1))
+            zsk.append(Cartesian2DMapFeature().s2o(self.M[i].boxplus(Pose3D.ominus(self.xsk[0:3,0].reshape((3,1)))))+noise)
             # Measurement noise
             Rsk.append(self.Rfc)
 
-        if self.k % self.Cartesian2D_feature_reading_frequency == 0:
+        if self.Cartesian2D_feature_reading_frequency != 0 and self.k % self.Cartesian2D_feature_reading_frequency == 0:
+            return zsk, Rsk
+        else:
+            return [], []
+        
+    
+    def ReadFeaturePolar2D(self):
+        """ Simulates the feature reading of the robot.
+
+        :return: 2D Polar distance from the robot to features in the robot frame and the covariance of its noise *R_feature*
+        """
+
+        # TODO: to be completed by the student
+        # Initialise the measurement zsk with size is DoF of the feature by 1
+        zsk = []
+        Rsk = []
+
+        # Number of feature loop
+        for i in range(0,self.nf):
+            noise = np.random.normal(0, np.sqrt(self.Rfp.diagonal())).reshape((len(self.Rfp),1))
+            zsk.append(Cartesian2DStoredPolarObservedMapFeature().s2o(self.M[i].boxplus(Pose3D.ominus(self.xsk[0:3,0].reshape((3,1)))))+noise)
+            # Measurement noise
+            Rsk.append(self.Rfp)
+
+        if self.Polar2D_feature_reading_frequency != 0 and self.k % self.Polar2D_feature_reading_frequency == 0:
             return zsk, Rsk
         else:
             return [], []

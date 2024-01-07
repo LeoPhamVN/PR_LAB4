@@ -12,14 +12,18 @@ class MBL_3DOFDDCtVelocityMM_2DCartesianFeatureOM(Cartesian2DMapFeature, FEKFMBL
     * :class:`EKF_3DOFDifferentialDriveCtVelocity`: EKF for 3 DOF Differential Drive Mobile Robot with Constant Velocity Motion Model and encoder readings.
     """
 
-    def __init__(self, *args):
+    def __init__(self, M, alpha, kSteps, robot, *args):
+        x0 = np.zeros((6, 1))  # initial state x0=[x y z psi u v w r]^T
+        P0 = np.zeros((6, 6))  # initial covariance
+
         xBpose_dim =3
         xB_dim = 6
         xF_dim = 2
         zfi_dim = 2
         self.Feature = globals()["CartesianFeature"]
         self.Pose = globals()["Pose3D"]
-        super().__init__( *args)
+
+        super().__init__(M, alpha, kSteps, robot, *args)
 
 if __name__ == '__main__':
 
@@ -31,25 +35,20 @@ if __name__ == '__main__':
            CartesianFeature(np.array([[40,-40]]).T)]  # feature map. Position of 2 point features in the world frame.
 
     xs0 = np.zeros((6,1))  # initial simulated robot pose
+    kSteps = 200
+    alpha = 0.95
 
-    robot = DifferentialDriveSimulatedRobot(xs0, M)  # instantiate the simulated robot object
-    kSteps = 5000
-
-    xs0 = np.zeros((6, 1))  # initial simulated robot pose
-    index = [IndexStruct("x", 0, None), IndexStruct("y", 1, None), IndexStruct("yaw", 2, 1)]
+    index = [IndexStruct("x", 0, None), IndexStruct("y", 1, None), IndexStruct("yaw", 2, 1),
+             IndexStruct("u", 3, 2), IndexStruct("v", 4, 3), IndexStruct("yaw_dot", 5, None)]
 
     x0 = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]).T
     P0 = np.diag(np.array([0.0, 0.0, 0.0, 0.5 ** 2, 0 ** 2, 0.05 ** 2]))
-
-    alpha = 0.95
-
-    index = [IndexStruct("x", 0, None), IndexStruct("y", 1, None), IndexStruct("yaw", 2, 1)]
 
     robot = DifferentialDriveSimulatedRobot(xs0, M)  # instantiate the simulated robot object
 
     dd_robot = MBL_3DOFDDCtVelocityMM_2DCartesianFeatureOM(M, alpha, kSteps, robot)
 
-    P0 = np.zeros((6, 6))
+    # P0 = np.zeros((6, 6))
     usk=np.array([[0.5, 0.03]]).T
     dd_robot.LocalizationLoop(x0, P0, usk)
 

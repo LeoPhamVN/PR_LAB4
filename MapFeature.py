@@ -108,7 +108,7 @@ class MapFeature:
         J = np.diag(np.ones(np.shape(v)[0]))
         return J
 
-    def hf(self, xk):  # Observation function for al zf observations
+    def hf(self, xk, i_mapping):  # Observation function for al zf observations
         """
         This is the direct observation model, implementing the feature observation equation for the data
         association hypothesis :math:`\mathcal{H}`, the features observation vector :math:`z_f, the state vector :math:`x_k`,
@@ -140,11 +140,14 @@ class MapFeature:
         :return: vector of expected features observations corresponding to the vector of observed features :math:`z_f`.
         """
         # TODO: To be implemented by the student    
-        _hf = self.hfj(xk, 0)
+        if len(i_mapping) > 0:   
+            _hf = self.hfj(xk, i_mapping[0])
+        else:
+            return np.zeros((0,1))
 
         # Number of feature loop
-        for i in range(1,self.nf):
-            _hf = np.block([[_hf],[self.hfj(xk, i)]])
+        for i in range(1,len(i_mapping)):
+            _hf = np.block([[_hf],[self.hfj(xk, i_mapping[i])]])
         
         return _hf
 
@@ -229,8 +232,7 @@ class MapFeature:
         # TODO: To be implemented by the student
         # Get Pose vector from the filter state
         NxB = xk_bar[0:3,0].reshape((3,1))
-        a = self.M[Fj]
-        _hfj = self.o2s(self.M[Fj].boxplus(Pose3D.ominus(NxB)))
+        _hfj = self.s2o(self.M[Fj].boxplus(Pose3D.ominus(NxB)))
         return _hfj
 
     def Jhfjx(self, xk, Fj):  # Jacobian wrt x of the observation function for feature observation i
@@ -372,7 +374,7 @@ class Cartesian2DMapFeature(MapFeature):
         return zf, Rf, Hf, Vf
 
 
-class Polar2DMapFeature(MapFeature):
+class Cartesian2DStoredPolarObservedMapFeature(MapFeature):
     """
     This class inherits from the :class:`MapFeature` and implements a 2D Cartesian feature model for the MBL problem. The Cartesian coordinates are used for both,
     observing the feature and for its storage within the map. This class overrides the :meth:`GetFeatures` method to read
@@ -390,9 +392,13 @@ class Polar2DMapFeature(MapFeature):
 
         """
         # TODO: To be implemented by the student
-        # self.robot.ReadCompass()
-
-        return zk, Rk
+        zf, Rf = self.robot.ReadFeaturePolar2D()
+        Hf = []
+        Vf = []
+        # Raise flag got feature
+        if len(zf) != 0:
+            self.featureData = True
+        return zf, Rf, Hf, Vf
     
     def s2o(self, v):
         """
@@ -400,16 +406,81 @@ class Polar2DMapFeature(MapFeature):
         By default, it returns the same vector as the one provided as input, assuming that the observation representation is the same as the storage representation.
         In case it is not, this method must be overriden in the child class.
 
-        :param v: vector in the storage representation
-        :return: vector in the observation representation
+        :param v: vector in the storage representation (Cartesian)
+        :return: vector in the observation representation (Polar)
         """
         # TODO: To be implemented by the student
-        Observation_representation = v
+        Observation_representation = CartesianFeature(np.block([np.sqrt(v[0]**2+v[1]**2), np.arctan2(v[1], v[0])]).reshape(2,1))
         return Observation_representation
     
+    def o2s(self, v):
+        """
+        Conversion function from the observation representation to the storage representation. By default, it returns the
+        same vector as the one provided as input, assuming that the observation representation is the same as the storage representation.
+        In case it is not, this method must be overriden in child classes.
 
+        :param v: vector in the observation representation (Polar)
+        :return: vector in the storage representation (Cartesian)
+        """
+        # TODO: To be implemented by the student
+        # Compute a vector on the observation representation
+        Storage_representation = CartesianFeature(np.block([v[0]*np.cos(v[1]),v[0]*np.sin(v[1])]).reshape(2,1))
 
+        return Storage_representation
+    
+    def J_s2o(self, v):
+        """
+        Jacobian of the conversion function from the storage representation to the observation representation.
+        By default, it returns the identity matrix, assuming that the observation representation is the same as the storage representation.
+        In case it is not, this method must be overriden in the derived class.
 
+        :param v: vector in the storage representation
+        :return: Jacobian of the conversion function from the storage representation to the observation representation
+        """
+        # TODO: To be implemented by the student
+        J = np.block([[v[0]/np.sqrt(v[0]**2+v[1]**2), v[1]/np.sqrt(v[0]**2+v[1]**2)],
+                      [-v[1]/(v[0]**2+v[1]**2), v[0]/(v[0]**2+v[1]**2)]])
+        return J
+
+    def J_o2s(self, v):
+        """
+        Jacobian of the conversion function from the observation representation to the storage representation.
+        By default, it returns the identity matrix, assuming that the observation representation is the same as the storage representation.
+        In case it is not, this method must be overriden in the derived class.
+
+        :param v: vector in the observation representation
+        :return: Jacobian of the conversion function from the observation representation to the storage representation
+        """
+        # TODO: To be implemented by the student
+        J = np.block([[np.cos(v[1]), -v[0]*np.sin(v[1])],
+                      [np.sin(v[1]),  v[0]*np.cos(v[1])]])
+        return J
+
+class PolarMapFeature(MapFeature):
+    """
+    This class inherits from the :class:`MapFeature` and implements a 2D Cartesian feature model for the MBL problem. The Cartesian coordinates are used for both,
+    observing the feature and for its storage within the map. This class overrides the :meth:`GetFeatures` method to read
+    the 2D Cartesian Features from the robot.
+    """
+
+    def GetFeatures(self):
+        """
+        Reads the Features observations from the sensors. For all features within the field of view of the sensor, the
+        method returns the list of robot-related poses and the covariance of their corresponding observation noise in **2D Cartesian coordinates**.
+
+        :return zk, Rk: list of Cartesian features observations in the B-Frame and the covariance of their corresponding observation noise:
+            * :math:`z_k=[^Bx_{F_i}^T \\cdots ^Bx_{F_j}^T \\cdots ^Bx_{F_k}^T]^T`
+            * :math:`R_k=block\\_diag([R_{F_i} \\cdots R_{F_j} \\cdots R_{F_k}])`
+
+        """
+        # TODO: To be implemented by the student
+        zf, Rf = self.robot.ReadFeaturePolar2D()
+        Hf = []
+        Vf = []
+        # Raise flag got feature
+        if len(zf) != 0:
+            self.featureData = True
+        return zf, Rf, Hf, Vf
 
 if __name__ == '__main__':
     M = [CartesianFeature(np.array([[-40, 5]]).T),
@@ -422,8 +493,10 @@ if __name__ == '__main__':
     xs0 = np.zeros((6, 1))
     
     a = Cartesian2DMapFeature().Jgx(xs0, M[0])
-
-    print("a=", a)
+    b = Polar2DMapFeature().s2o(M[0])
+    c = Polar2DMapFeature().o2s(M[0])
+    print("b=", b)
+    print("c=", c)
 
 
     exit(0)

@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
 
     xs0 = np.zeros((6, 1))
-    kSteps = 5000
+    kSteps = 1000
     alpha = 0.95
 
     index = [IndexStruct("x", 0, None), IndexStruct("y", 1, None), IndexStruct("yaw", 2, 1)]
@@ -36,13 +36,14 @@ if __name__ == '__main__':
     robot = DifferentialDriveSimulatedRobot(xs0, M)  # instantiate the simulated robot object
 
     x0 = Pose3D(np.zeros((3, 1)))
-    dr_robot = DR_3DOFDifferentialDrive(index, kSteps, robot, x0)
+    P0 = np.zeros((3, 3))
+    dr_robot = DR_3DOFDifferentialDrive(index, kSteps, robot, x0, P0)
     robot.SetMap(M)
 
     auv = MBL_3DOFDDInputDisplacementMM_2DCartesianFeaturePolarObservedOM(M, alpha, kSteps, robot)
 
-    P0 = np.zeros((3,3))
     usk=np.array([[0.5, 0.03]]).T
+    # usk=np.array([[5, 0.3]]).T
     auv.LocalizationLoop(x0, P0, usk)
 
     exit(0)

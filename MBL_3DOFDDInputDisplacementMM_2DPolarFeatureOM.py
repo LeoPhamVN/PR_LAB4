@@ -19,7 +19,9 @@ class MBL_3DOFDDInputDisplacementMM_2DPolarFeatureOM(PolarMapFeature, FEKFMBL,
         self.Pose = globals()["Pose3D"]
         super().__init__(*args)
 
-
+def c2p(v):
+    polar = CartesianFeature(np.block([np.sqrt(v[0]**2+v[1]**2), np.arctan2(v[1], v[0])]).reshape(2,1))
+    return polar
 if __name__ == '__main__':
     M = [c2p(CartesianFeature(np.array([[-40, 5]]).T)),
              c2p(CartesianFeature(np.array([[-5, 40]]).T)),

@@ -61,7 +61,7 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
         """
         # TODO: To be completed by the student
         # Get output of encoder via ReadEncoder() function
-        uk_pulse, _     = self.robot.ReadEncoders()
+        uk_pulse, Qk     = self.robot.ReadEncoders()
         
         # Compute travel distance of 2 wheels [meter] from output of the encoder
         d_L     = uk_pulse[0, 0] * (2*np.pi*self.wheelRadius/self.robot.pulse_x_wheelTurns)
@@ -77,7 +77,12 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
                                     [0],
                                     [delta_theta_k]])
         
-        Qk = np.diag(np.array([0.1 ** 2, 0.1 ** 2, np.deg2rad(5) ** 2]))  # covariance of simulated displacement noise
+        # uk              = np.array([[0],
+        #                             [0],
+        #                             [0]])
+        
+        Qk = np.diag(np.array([0.01 ** 2, 0.01 ** 2, np.deg2rad(1) ** 2]))  # covariance of simulated displacement noise
+        # Qk = np.diag(np.array([10 ** 2, 10 ** 2, np.deg2rad(50) ** 2]))
 
         return uk, Qk
 

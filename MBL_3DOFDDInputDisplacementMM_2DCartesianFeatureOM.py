@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     xs0 = np.zeros((6, 1))
     
-    kSteps = 500
+    kSteps = 1000
     alpha = 0.95
 
     index = [IndexStruct("x", 0, None), IndexStruct("y", 1, None), IndexStruct("yaw", 2, 1)]
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     auv = MBL_3DOFDDInputDisplacementMM_2DCartesianFeatureOM(M, alpha, kSteps, robot)
 
     usk=np.array([[0.5, 0.03]]).T
-    usk=np.array([[5, 0.3]]).T
+    # usk=np.array([[5, 0.3]]).T
     auv.LocalizationLoop(x0, P0, usk)
 
     exit(0)

@@ -39,6 +39,7 @@ class GFLocalization(Localization,GaussianFilter):
         self.yTraj = []
         self.trajectory = plt.plot([], [], marker='.', color='blue', markersize=1)
 
+        self.encoderData = False
         self.headingData = False
         self.featureData = False
 
@@ -134,10 +135,10 @@ class GFLocalization(Localization,GaussianFilter):
             self.PlotUncertainty(zk, Rk)
 
             # Add to save figure to write the report
-            # if self.k % 400 == 10:
-            #     name_fig = './Figures/Figure_' + str(self.k//400)
-            #     plt.savefig(name_fig)
-            #     time.sleep(0.2)
+            if self.k % 60 == 0:
+                name_fig = './Figures/Figure_' + str(self.k//60)
+                plt.savefig(name_fig)
+                time.sleep(0.2)
             
         self.PlotState()  # plot the state estimation results
         plt.show()

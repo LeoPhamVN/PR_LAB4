@@ -185,6 +185,39 @@ class CartesianFeature(Feature,np.ndarray):
         """
         return np.eye(self.shape[0])
 
+class PolarFeature(Feature,np.ndarray):
+    """
+    Cartesian feature class. The class inherits from the :class:`Feature` class providing an implementation of its
+    interface for a Cartesian Feature, by implementing the :math:`\\boxplus` operator as well as its Jacobians. The
+    class also inherits from the ndarray numpy class allowing to be operated as a numpy ndarray.
+    """
+
+    def __new__(BxF, input_array):
+        """
+        Constructor of the class. It is called when the class is instantiated. It is required to extend the ndarry numpy class.
+
+        :param input_array: array used to initialize the class
+        :returns: the instance of a :class:`CartesianFeature class object
+        """
+        assert input_array.shape == (3,1) or input_array.shape == (2,1), "CartesianFeature must be of 2 or 3 DOF"
+
+        # Input array is an already formed ndarray instance
+        # We first cast to be our class type
+        obj = np.asarray(input_array).view(BxF)
+
+        # The F matrix is used to convert from a pose to a feature in order to take profit of the oplus operator already implemented in the Pose class
+        # The F matrix is (nf x np) where np is de dimension of the pose and nf the dimension of the feature
+        # F is build as a list of F matrices, where the index of the list matches the dimension of the feature
+        BxF.feature = obj
+
+        BxF.F = np.block([np.diag(np.ones(len(BxF.feature))), np.zeros((len(BxF.feature),1))])
+
+        super().__init__(BxF,obj)
+
+        # Finally, we must return the newly created object:
+        return obj
+
+
 if __name__ == '__main__':
 
     NxB3dof = Pose3D(np.array([[5,5,np.pi/2]]).T)

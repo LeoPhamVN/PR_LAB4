@@ -109,7 +109,7 @@ class EKF(GaussianFilter):
         # KF equations begin here
 
         # TODO: To be implemented by the student
-        if self.headingData == True or self.featureData == True:
+        if self.headingData == True or self.featureData == True or self.encoderData == True:
             # Compute Kalman gain
             Kk          = self.Pk_bar @ Hk.T @ np.linalg.inv(Hk @ self.Pk_bar @ Hk.T + Vk @ Rk @ Vk.T)
 
@@ -121,6 +121,7 @@ class EKF(GaussianFilter):
             self.xk = xk_bar
             self.Pk = Pk_bar
 
+        self.encoderData = False
         self.headingData = False
         self.featureData = False
 
