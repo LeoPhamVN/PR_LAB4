@@ -35,7 +35,7 @@ if __name__ == '__main__':
            CartesianFeature(np.array([[40,-40]]).T)]  # feature map. Position of 2 point features in the world frame.
 
     xs0 = np.zeros((6,1))  # initial simulated robot pose
-    kSteps = 200
+    kSteps = 2500
     alpha = 0.95
 
     index = [IndexStruct("x", 0, None), IndexStruct("y", 1, None), IndexStruct("yaw", 2, 1),
@@ -48,7 +48,6 @@ if __name__ == '__main__':
 
     dd_robot = MBL_3DOFDDCtVelocityMM_2DCartesianFeatureOM(M, alpha, kSteps, robot)
 
-    # P0 = np.zeros((6, 6))
     usk=np.array([[0.5, 0.03]]).T
     dd_robot.LocalizationLoop(x0, P0, usk)
 

@@ -48,7 +48,7 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
         J = Pose3D.J_2oplus(xk_1.reshape((3,1)))
         return J
 
-    def h_heading(self, xk):  #:hm(self, xk):
+    def h(self, xk):  #:hm(self, xk):
         # TODO: To be completed by the student
         # Obserse the heading of the robot
         h   = xk[2,0]
@@ -77,12 +77,7 @@ class EKF_3DOFDifferentialDriveInputDisplacement(GFLocalization, DR_3DOFDifferen
                                     [0],
                                     [delta_theta_k]])
         
-        # uk              = np.array([[0],
-        #                             [0],
-        #                             [0]])
-        
-        Qk = np.diag(np.array([0.01 ** 2, 0.01 ** 2, np.deg2rad(1) ** 2]))  # covariance of simulated displacement noise
-        # Qk = np.diag(np.array([10 ** 2, 10 ** 2, np.deg2rad(50) ** 2]))
+        Qk = np.diag(np.array([0.04 ** 2, 0.02 ** 2, np.deg2rad(0.5) ** 2]))  # covariance of simulated displacement noise
 
         return uk, Qk
 

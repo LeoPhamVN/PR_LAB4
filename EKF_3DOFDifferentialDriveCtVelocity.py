@@ -113,10 +113,11 @@ class EKF_3DOFDifferentialDriveCtVelocity(GFLocalization, DR_3DOFDifferentialDri
             zk, Rk = np.block([[zk], [n]]), scipy.linalg.block_diag(Rk, Rn)
             Hk, Vk = np.block([[Hk], [H_n]]), scipy.linalg.block_diag(Vk, np.eye(2))
 
+            self.encoderData = True
+
         if zk.shape[0] == 0: # if there is no measurement
             return np.zeros((0,1)), np.zeros((0,0)),np.zeros((1,0)), np.zeros((0,0))
         else:
-            self.encoderData = True
             return zk, Rk, Hk, Vk
 
 if __name__ == '__main__':

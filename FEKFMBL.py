@@ -97,7 +97,7 @@ class FEKFMBL(GFLocalization, MapFeature):
         """
 
         # TODO: To be completed by the student
-        _hm = self.h_heading(xk)
+        _hm = xk[2,0]
         return _hm
     
     def SquaredMahalanobisDistance(self, hfj, Pfj, zfi, Rfi):
@@ -191,6 +191,10 @@ class FEKFMBL(GFLocalization, MapFeature):
             hF.append(hF_i)
             PF.append(PF_i)
         H = self.ICNN(hF, PF, zf, Rf)
+        # for i in range(len(H)):
+        #     if H[i] == 0:
+        #         a = 1
+        #         b = self.ICNN(hF, PF, zf, Rf)
         self.H = H
         return H
 

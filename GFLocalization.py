@@ -97,13 +97,8 @@ class GFLocalization(Localization,GaussianFilter):
         zk, Rk, Hk, Vk  = self.GetMeasurements()
         # Update step
         xk, Pk          = self.Update(zk, Rk, xk_bar, Pk_bar, Hk, Vk)
-        # xk = xk_bar
-        # Pk = Pk_bar
 
-        # self.xk = xk_bar
-        # self.Pk = Pk_bar
-
-        return xk, Pk, xk_bar, zk
+        return xk, Pk, xk_bar, zk, Rk
 
     def LocalizationLoop(self, x0, P0, usk):
         """
@@ -120,7 +115,6 @@ class GFLocalization(Localization,GaussianFilter):
 
         for self.k in range(self.kSteps):
             xsk = self.robot.fs(xsk_1, usk)  # Simulate the robot motion
-            # xk, Pk, xk_bar, zk = self.Localize(xk_1, Pk_1)  # Localize the robot
             xk, Pk, xk_bar, zk, Rk = self.Localize(xk_1, Pk_1)  # Localize the robot
 
             xsk_1 = xsk  # current state becomes previous state for next iteration
@@ -131,7 +125,6 @@ class GFLocalization(Localization,GaussianFilter):
             self.Log(xsk, xk, Pk, xk_bar, zk)
             
             # plot the estimated trajectory
-            # self.PlotUncertainty(xk, Pk)
             self.PlotUncertainty(zk, Rk)
 
             # Add to save figure to write the report
@@ -213,28 +206,43 @@ class GFLocalization(Localization,GaussianFilter):
         if self.plot_xy_estimation:
             axs.plot(self.log_x[0, 0:self.kSteps], self.log_x[1, 0:self.kSteps], ls='-', c='red')
 
-    def PlotRobotUncertainty(self,xk,Pk):  # plots the robot trajectory and its uncertainty ellipse
-        """
-        Plots the robot trajectory and its uncertainty ellipse.
-        :param xk: state vector
-        :param Pk: covariance matrix of the state vector
-        """
-        if xk.size>1:
-            # Plot Robot Ellipse
-            robot_ellipse = GetEllipse(xk, Pk)
-            self.plt_robot_ellipse.set_data(robot_ellipse[0], robot_ellipse[1])  # update it
+    # def PlotRobotUncertainty(self,xk,Pk):  # plots the robot trajectory and its uncertainty ellipse
+    #     """
+    #     Plots the robot trajectory and its uncertainty ellipse.
+    #     :param xk: state vector
+    #     :param Pk: covariance matrix of the state vector
+    #     """
+    #     if xk.size>1:
+    #         # Plot Robot Ellipse
+    #         robot_ellipse = GetEllipse(xk, Pk)
+    #         self.plt_robot_ellipse.set_data(robot_ellipse[0], robot_ellipse[1])  # update it
 
-            # Plot Robot Trajectory
-            self.xTraj.append(xk[0, 0])
-            self.yTraj.append(xk[1, 0])
-            self.trajectory.pop(0).remove()
-            self.trajectory = plt.plot(self.xTraj, self.yTraj, marker='.', color='blue', markersize=1)
+    #         # Plot Robot Trajectory
+    #         self.xTraj.append(xk[0, 0])
+    #         self.yTraj.append(xk[1, 0])
+    #         self.trajectory.pop(0).remove()
+    #         self.trajectory = plt.plot(self.xTraj, self.yTraj, marker='.', color='blue', markersize=1)
 
-    def PlotUncertainty(self,xk,Pk):
+    def PlotRobotUncertainty(self):  # plots the robot trajectory and its uncertainty ellipse
+        """
+        Plots the robot trajectory and its uncertainty ellipse. This method is called by :meth:`FEKFMBL.PlotUncertainty`.
+
+        """
+        # Plot Robot Ellipse
+        robot_ellipse = GetEllipse(self.robot.xsk, self.Pk)
+        self.plt_robot_ellipse.set_data(robot_ellipse[0], robot_ellipse[1])  # update it
+
+        # Plot Robot Trajectory
+        self.xTraj.append(self.xk[0, 0])
+        self.yTraj.append(self.xk[1, 0])
+        self.trajectory.pop(0).remove()
+        self.trajectory = plt.plot(self.xTraj, self.yTraj, marker='.', color='blue', markersize=1)
+
+    def PlotUncertainty(self,zk,Rk):
         """
         Plots the uncertainty ellipse of the robot pose.
         :param xk: state vector
         :param Pk: covariance matrix of the state vector
         """
         if self.k % self.robot.visualizationInterval == 0:
-            self.PlotRobotUncertainty(xk,Pk)
+            self.PlotRobotUncertainty()

@@ -217,6 +217,86 @@ class PolarFeature(Feature,np.ndarray):
         # Finally, we must return the newly created object:
         return obj
 
+    def boxplus(BxF, NxB):
+        """
+        Pose-Cartesian Feature compounding operation:
+
+        .. math::
+            F&=\\begin{bmatrix} 1 & 0 & 0 & 0 \\\\ 0 & 1 & 0 & 0 \\end{bmatrix}\\\\
+            ^Nx_F&=^Nx_B \\boxplus ^Bx_F = F ( ^Nx_B \\oplus ^Bx_F )
+            :label: eq-boxplus2DCartesian
+
+        which computes the Cartesian position of a feature in the N-Frame given the pose of the robot in the N-Frame and
+        the Cartesian position of the feature in the B-Frame.
+
+        :param NxB: Robot pose in the N-Frame (:math:`^Nx_B`)
+        :param BxF: Cartesian feature pose in the B-Frame (:math:`^Bx_F`)
+        :return: Feature pose in the N-Frame (:math:`^Nx_F`)
+        """
+
+        # TODO: To be completed by the student
+        # Convert to cartesian coordinate
+        BxF = BxF.ToCartesian()
+        NxB = NxB.ToCartesian()
+
+        NxF = BxF.F @ Pose3D.oplus(NxB, (BxF.F).T @ BxF)
+
+        # Convert to polar coordinate
+        NxF = PolarFeature.ToPolar(NxF)
+        return NxF
+    
+    def J_1boxplus(BxF, NxB):
+        """
+        Jacobian of the Pose-Cartesian Feature compounding operation with respect to the robot pose:
+
+        .. math::
+            J_{1\\boxplus} = F J_{1\\oplus}
+            :label: eq-J1boxplus2DCartesian
+
+        :param NxB: robot pose represented in the N-Frame (:math:`^Nx_B`)
+        :param BxF: Cartesian feature pose represented in the B-Frame (:math:`^Bx_F`)
+        :return: Jacobian matrix :math:`J_{1\\boxplus}` (eq. :eq:`eq-J1boxplus2DCartesian`) (eq. :eq:`eq-J1boxplus2DCartesian`)
+        """
+
+        # TODO: To be completed by the student
+        J = BxF.F @ Pose3D.J_1oplus(NxB, (BxF.F).T @ BxF)
+        return J
+
+    def J_2boxplus(BxF, NxB):
+        """
+        Jacobian of the Pose-Cartesian Feature compounding operation with respect to the feature position:
+
+        .. math::
+            J_{2\\boxplus} = F J_{2oplus}
+            :label: eq-J2boxplus2DCartesian
+
+        :param NxB: robot pose represented in the N-Frame (:math:`^Nx_B`)
+        :param BxF: Cartesian feature pose represented in the B-Frame (:math:`^Bx_F`)
+        :return: Jacobian matrix :math:`J_{1\\boxplus}` (eq. :eq:`eq-J2boxplus2DCartesian`)
+        """
+
+        # TODO: To be completed by the student
+        J = BxF.F @ Pose3D.J_2oplus(NxB) @ (BxF.F).T
+        return J
+    
+    def ToCartesian(self):
+        """
+        Translates from its internal representation to the representation used for plotting.
+
+        :return: Feature in Cartesian Coordinates
+        """
+        cartesianFeature = CartesianFeature(np.block([self[0]*cos(self[1]), self[0]*sin(self[1]), self[2]]).reshape(3,1))
+        return cartesianFeature
+    
+    def ToPolar(self):
+        """
+        Translates from its internal representation to the representation used for plotting.
+
+        :return: Feature in Cartesian Coordinates
+        """
+        polarFeature = PolarFeature(np.block([np.sqrt(self[0]**2+self[1]**2), np.arctan2(self[1], self[0]), self[2]]).reshape(3,1))
+        return polarFeature
+
 
 if __name__ == '__main__':
 
